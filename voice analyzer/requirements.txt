@@ -1,0 +1,28 @@
+# Audio
+pydub>=0.25.1
+librosa>=0.10.1
+soundfile>=0.12.1
+numpy>=1.24.0
+
+# Transcription (local Whisper)
+openai-whisper>=20231117
+
+# Speaker diarization (local, zero recurring cost)
+pyannote-audio>=3.1.0
+
+# Sentiment / NLP
+transformers>=4.36.0
+torch>=2.0.0
+tokenizers>=0.15.0
+
+# API
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
+# Config
+python-dotenv>=1.0.0
+
+# Dashboard
+streamlit>=1.29.0
+requests>=2.31.0

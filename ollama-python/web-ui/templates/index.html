@@ -1,0 +1,1502 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Local AI Dashboard</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --surface: #13131c;
+            --surface2: #1a1a28;
+            --border: #252535;
+            --accent1: #8b7aff;
+            --accent2: #ff6b9d;
+            --accent3: #00e5cc;
+            --text: #f0f0f5;
+            --muted: #6b6b8a;
+            --sans: 'Manrope', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 20% 30%, rgba(139, 122, 255, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(0, 229, 204, 0.04) 0%, transparent 50%);
+            animation: breathe 8s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes breathe {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        /* ═══ HEADER ═══ */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            padding: max(env(safe-area-inset-top), 12px) 20px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent1), var(--accent2));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .title {
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: -0.4px;
+        }
+
+        .user-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 4px 4px 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 50px;
+        }
+
+        .avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .logout-link {
+            font-size: 10px;
+            font-family: var(--mono);
+            color: var(--muted);
+            text-decoration: none;
+            padding: 4px 9px;
+            background: var(--bg);
+            border-radius: 50px;
+            transition: color 0.2s;
+        }
+
+        /* ═══ MOBILE CONTAINER ═══ */
+        @media (max-width: 768px) {
+            .desktop-grid {
+                display: none !important;
+            }
+
+            .mobile-container {
+                position: fixed;
+                top: 57px;
+                left: 0;
+                right: 0;
+                bottom: 68px;
+                overflow: hidden;
+            }
+
+            .cards-wrapper {
+                position: relative;
+                width: 100%;
+                height: 100%;
+            }
+
+            .card {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: var(--bg);
+                display: flex;
+                flex-direction: column;
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+                overflow: hidden;
+            }
+
+            .card[data-index="0"] {
+                transform: translateX(0);
+                opacity: 1;
+                z-index: 3;
+            }
+
+            .card[data-index="1"] {
+                transform: translateX(100%);
+                opacity: 0;
+                z-index: 2;
+            }
+
+            .card[data-index="2"] {
+                transform: translateX(100%);
+                opacity: 0;
+                z-index: 1;
+            }
+
+            .card.prev {
+                transform: translateX(-100%);
+                opacity: 0;
+                z-index: 2;
+            }
+
+            .card.active {
+                transform: translateX(0);
+                opacity: 1;
+                z-index: 3;
+            }
+
+            .card.next {
+                transform: translateX(100%);
+                opacity: 0;
+                z-index: 2;
+            }
+
+            /* Card header */
+            .card-header {
+                padding: 20px 20px 16px;
+                border-bottom: 1px solid var(--border);
+                background: var(--surface);
+                flex-shrink: 0;
+            }
+
+            .card-icon {
+                width: 48px;
+                height: 48px;
+                border-radius: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 22px;
+                margin-bottom: 12px;
+            }
+
+            .card-icon.chat {
+                background: linear-gradient(135deg, rgba(139, 122, 255, 0.15), rgba(139, 122, 255, 0.08));
+                border: 1px solid rgba(139, 122, 255, 0.3);
+            }
+
+            .card-icon.email {
+                background: linear-gradient(135deg, rgba(255, 107, 157, 0.15), rgba(255, 107, 157, 0.08));
+                border: 1px solid rgba(255, 107, 157, 0.3);
+            }
+
+            .card-icon.pdf {
+                background: linear-gradient(135deg, rgba(0, 229, 204, 0.15), rgba(0, 229, 204, 0.08));
+                border: 1px solid rgba(0, 229, 204, 0.3);
+            }
+
+            .card-title {
+                font-size: 20px;
+                font-weight: 800;
+                letter-spacing: -0.5px;
+                margin-bottom: 4px;
+            }
+
+            .card-title.chat {
+                color: var(--accent1);
+            }
+
+            .card-title.email {
+                color: var(--accent2);
+            }
+
+            .card-title.pdf {
+                color: var(--accent3);
+            }
+
+            .card-desc {
+                font-size: 13px;
+                color: var(--muted);
+                font-family: var(--mono);
+            }
+
+            /* Card body - FIXED FOR iOS */
+            .card-body {
+                flex: 1;
+                overflow-y: auto;
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch;
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+                min-height: 0;
+                /* Critical for iOS flex */
+            }
+
+            /* Bottom nav */
+            .mobile-nav {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: calc(68px + env(safe-area-inset-bottom));
+                padding-bottom: env(safe-area-inset-bottom);
+                background: rgba(10, 10, 15, 0.95);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-top: 1px solid var(--border);
+                display: flex;
+                justify-content: space-around;
+                align-items: flex-start;
+                padding-top: 10px;
+                z-index: 100;
+            }
+
+            .nav-btn {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                background: none;
+                border: none;
+                color: var(--muted);
+                cursor: pointer;
+                padding: 8px 16px;
+                border-radius: 12px;
+                transition: color 0.2s;
+            }
+
+            .nav-btn.active {
+                color: var(--text);
+            }
+
+            .nav-btn.active::after {
+                content: '';
+                position: absolute;
+                bottom: -6px;
+                width: 4px;
+                height: 4px;
+                border-radius: 50%;
+                background: currentColor;
+            }
+
+            .nav-icon {
+                font-size: 22px;
+            }
+
+            .nav-label {
+                font-size: 10px;
+                font-weight: 600;
+                font-family: var(--mono);
+            }
+        }
+
+        /* ═══ DESKTOP GRID ═══ */
+        @media (min-width: 769px) {
+
+            .mobile-container,
+            .mobile-nav {
+                display: none !important;
+            }
+
+            body {
+                position: static;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .desktop-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 1px;
+                background: var(--border);
+                height: calc(100vh - 57px);
+                margin-top: 57px;
+            }
+
+            .panel {
+                background: var(--bg);
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+            .panel-header {
+                padding: 18px 22px 14px;
+                border-bottom: 1px solid var(--border);
+                background: var(--surface);
+                flex-shrink: 0;
+            }
+
+            .panel-title {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .panel-icon {
+                width: 32px;
+                height: 32px;
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 16px;
+            }
+
+            .panel-icon.chat {
+                background: rgba(139, 122, 255, 0.15);
+                border: 1px solid rgba(139, 122, 255, 0.3);
+            }
+
+            .panel-icon.email {
+                background: rgba(255, 107, 157, 0.15);
+                border: 1px solid rgba(255, 107, 157, 0.3);
+            }
+
+            .panel-icon.pdf {
+                background: rgba(0, 229, 204, 0.15);
+                border: 1px solid rgba(0, 229, 204, 0.3);
+            }
+
+            .panel-label {
+                font-size: 15px;
+                font-weight: 800;
+                letter-spacing: -0.3px;
+            }
+
+            .panel-label.chat {
+                color: var(--accent1);
+            }
+
+            .panel-label.email {
+                color: var(--accent2);
+            }
+
+            .panel-label.pdf {
+                color: var(--accent3);
+            }
+
+            .panel-desc {
+                font-size: 11px;
+                color: var(--muted);
+                font-family: var(--mono);
+                margin-top: 3px;
+            }
+
+            .panel-body {
+                flex: 1;
+                overflow-y: auto;
+                padding: 18px 22px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                min-height: 0;
+            }
+        }
+
+        /* ═══ SHARED COMPONENTS ═══ */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-height: 0;
+        }
+
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .empty-icon {
+            font-size: 32px;
+            opacity: 0.3;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .message.user {
+            align-items: flex-end;
+        }
+
+        .message.assistant {
+            align-items: flex-start;
+        }
+
+        .msg-label {
+            font-size: 10px;
+            color: var(--muted);
+            font-family: var(--mono);
+            padding: 0 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .bubble {
+            padding: 11px 15px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            max-width: 85%;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .message.user .bubble {
+            background: linear-gradient(135deg, var(--accent1), #6b5ae0);
+            color: #fff;
+            border-radius: 16px 16px 4px 16px;
+            box-shadow: 0 4px 12px rgba(139, 122, 255, 0.2);
+        }
+
+        .message.assistant .bubble {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 16px 16px 16px 4px;
+        }
+
+        .chat-input-row {
+            display: flex;
+            gap: 10px;
+            padding-top: 14px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        /* iOS-friendly inputs */
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 16px;
+            /* Prevents iOS zoom */
+            font-family: var(--sans);
+            transition: border-color 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent1);
+            background: var(--surface2);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-size: 16px;
+            /* Prevents iOS zoom */
+        }
+
+        .field-label {
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: block;
+        }
+
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            padding: 13px 20px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: var(--sans);
+            font-weight: 700;
+            transition: transform 0.1s;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-shrink: 0;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-chat {
+            background: linear-gradient(135deg, var(--accent1), #6b5ae0);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(139, 122, 255, 0.3);
+        }
+
+        .btn-email {
+            background: linear-gradient(135deg, var(--accent2), #e04f7a);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(255, 107, 157, 0.3);
+        }
+
+        .btn-pdf {
+            background: linear-gradient(135deg, var(--accent3), #00b3a1);
+            color: var(--bg);
+            box-shadow: 0 4px 14px rgba(0, 229, 204, 0.3);
+        }
+
+        .response-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 13px;
+            font-family: var(--mono);
+            line-height: 1.7;
+            color: var(--muted);
+            white-space: pre-wrap;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            min-height: 120px;
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .response-box.active {
+            color: var(--text);
+        }
+
+        .pdf-status {
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-family: var(--mono);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            flex-shrink: 0;
+        }
+
+        .pdf-status.success {
+            background: rgba(0, 229, 204, 0.08);
+            border-color: rgba(0, 229, 204, 0.3);
+            color: var(--accent3);
+        }
+
+        .file-upload {
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .file-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px;
+            background: var(--surface);
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            font-size: 13px;
+            font-family: var(--mono);
+            color: var(--muted);
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .file-upload:active .file-label {
+            transform: scale(0.98);
+        }
+
+        .conv-sidebar {
+            width: 140px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            max-height: 100%;
+        }
+        @media (max-width: 768px) {
+            .conv-sidebar { width: 100px; font-size: 11px; }
+        }
+
+        .conv-item {
+            padding: 10px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--muted);
+        }
+
+        .conv-item:hover {
+            background: var(--surface2);
+            color: var(--text);
+        }
+
+        .conv-item.active {
+            background: rgba(139, 122, 255, 0.15);
+            color: var(--accent1);
+        }
+
+        .model-select {
+            font-size: 11px;
+            padding: 6px 10px;
+            max-width: 140px;
+        }
+
+        .draft-item {
+            padding: 8px 12px;
+            font-size: 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 6px;
+            color: var(--muted);
+        }
+
+        .draft-item:hover {
+            border-color: var(--accent2);
+            color: var(--text);
+        }
+
+        .pdf-select {
+            font-size: 13px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div class="logo-group">
+            <div class="logo">🤖</div>
+            <div class="title">AI Dashboard</div>
+        </div>
+        <div class="user-badge">
+            {% if user.picture %}
+            <img src="{{ user.picture }}" class="avatar" alt="avatar">
+            {% endif %}
+            <a href="/logout" class="logout-link">exit</a>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <!-- MOBILE VIEW -->
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="mobile-container">
+        <div class="cards-wrapper" id="cardsWrapper">
+
+            <!-- CARD 1: CHATBOT -->
+            <div class="card active" data-index="0">
+                <div class="card-header">
+                    <div class="card-icon chat">💬</div>
+                    <div class="card-title chat">Chatbot</div>
+                    <div class="card-desc">multi-turn conversation</div>
+                    <select class="model-select" id="chatModelMobile" title="Model"></select>
+                    <button onclick="startNewChat()"
+                        style="margin-left: auto; padding: 6px 12px; font-size: 11px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); cursor: pointer; font-family: var(--mono);">+
+                        New</button>
+                </div>
+                <div class="card-body" style="display:flex; gap:0;">
+                    <div class="conv-sidebar" id="convSidebarMobile">
+                        <div class="conv-item" style="color:var(--muted);">Load...</div>
+                    </div>
+                    <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="empty-state">
+                            <div class="empty-icon">💬</div>
+                            <div>Start a conversation</div>
+                        </div>
+                    </div>
+                    <div class="chat-input-row">
+                        <input type="text" id="chatInput" placeholder="Type a message..."
+                            onkeypress="if(event.key==='Enter') sendChat()">
+                        <button class="btn btn-chat" onclick="sendChat()" id="chatBtn"
+                            style="width:auto; padding:13px 18px;">→</button>
+                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD 2: EMAIL -->
+            <div class="card" data-index="1">
+                <div class="card-header">
+                    <div class="card-icon email">📧</div>
+                    <div class="card-title email">Email Writer</div>
+                    <div class="card-desc">describe → generate</div>
+                    <select class="model-select" id="emailModelMobile" title="Model"></select>
+                </div>
+                <div class="card-body">
+                    <div class="field-group" id="emailDraftsMobile" style="max-height:120px;overflow-y:auto;">
+                        <span class="field-label">Saved drafts</span>
+                        <div id="draftsListMobile">—</div>
+                    </div>
+                    <div class="field-group">
+                        <span class="field-label">Describe your email</span>
+                        <textarea id="emailDesc"
+                            placeholder="e.g. Tell my team the meeting moved to Wednesday..."></textarea>
+                    </div>
+                    <div class="field-group">
+                        <span class="field-label">Tone</span>
+                        <select id="emailTone">
+                            <option value="professional">Professional</option>
+                            <option value="friendly">Friendly</option>
+                            <option value="formal">Formal</option>
+                            <option value="casual">Casual</option>
+                        </select>
+                    </div>
+                    <label style="font-size:12px;color:var(--muted);margin-bottom:8px;"><input type="checkbox" id="saveDraftMobile"> Save as draft</label>
+                    <button class="btn btn-email" onclick="writeEmail()" id="emailBtn">✉️ Write Email</button>
+                    <div class="field-group" style="flex:1; min-height:0;">
+                        <span class="field-label">Output</span>
+                        <div class="response-box" id="emailResponse">Your email will appear here...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD 3: PDF -->
+            <div class="card" data-index="2">
+                <div class="card-header">
+                    <div class="card-icon pdf">📄</div>
+                    <div class="card-title pdf">Talk to PDF</div>
+                    <div class="card-desc">upload → ask questions</div>
+                    <select class="model-select" id="pdfModelMobile" title="Model"></select>
+                </div>
+                <div class="card-body">
+                    <div class="field-group">
+                        <span class="field-label">Upload document</span>
+                        <div class="file-upload">
+                            <input type="file" id="pdfFile" accept=".pdf" onchange="updateFileName()">
+                            <div class="file-label" id="fileLabel">📎 Choose PDF</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-pdf" onclick="uploadPDF()" id="uploadBtn">⚡ Index PDF</button>
+                    <div class="field-group">
+                        <span class="field-label">Select PDF</span>
+                        <select class="pdf-select" id="pdfSelectMobile" onchange="selectPdfMobile()"></select>
+                    </div>
+                    <div class="pdf-status" id="pdfStatus">○ No document loaded</div>
+                    <div class="field-group">
+                        <span class="field-label">Ask a question</span>
+                        <textarea id="pdfQuestion" placeholder="What is this document about?"></textarea>
+                    </div>
+                    <button class="btn btn-pdf" onclick="askPDF()" id="pdfBtn">🔍 Ask</button>
+                    <div class="field-group" style="flex:1; min-height:0;">
+                        <span class="field-label">Answer</span>
+                        <div class="response-box" id="pdfResponse">Upload a PDF first...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Bottom Navigation -->
+        <div class="mobile-nav">
+            <button class="nav-btn active" onclick="swipeToCard(0)">
+                <div class="nav-icon">💬</div>
+                <div class="nav-label">Chat</div>
+            </button>
+            <button class="nav-btn" onclick="swipeToCard(1)">
+                <div class="nav-icon">📧</div>
+                <div class="nav-label">Email</div>
+            </button>
+            <button class="nav-btn" onclick="swipeToCard(2)">
+                <div class="nav-icon">📄</div>
+                <div class="nav-label">PDF</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════ -->
+    <!-- DESKTOP VIEW -->
+    <!-- ════════════════════════════════════════════════════ -->
+    <div class="desktop-grid">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <div class="panel-icon chat">💬</div>
+                    <div>
+                        <div class="panel-label chat">Chatbot</div>
+                        <div class="panel-desc">multi-turn conversation</div>
+                    </div>
+                </div>
+                <select class="model-select" id="chatModelDesktop" title="Model"></select>
+                <button onclick="startNewChat()"
+                    style="margin-left: auto; padding: 8px 14px; font-size: 11px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--muted); cursor: pointer; font-family: var(--mono);">+
+                    New Chat</button>
+            </div>
+            <div class="panel-body" style="display:flex; gap:0;">
+                <div class="conv-sidebar" id="convSidebarDesktop">
+                    <div class="conv-item" style="color:var(--muted);">Load...</div>
+                </div>
+                <div style="flex:1; display:flex; flex-direction:column; min-width:0;">
+                <div class="chat-messages" id="chatMessagesDesktop">
+                    <div class="empty-state">
+                        <div class="empty-icon">💬</div>
+                        <div>Start a conversation</div>
+                    </div>
+                </div>
+                <div class="chat-input-row">
+                    <input type="text" id="chatInputDesktop" placeholder="Type a message..."
+                        onkeypress="if(event.key==='Enter') sendChatDesktop()">
+                    <button class="btn btn-chat" onclick="sendChatDesktop()" id="chatBtnDesktop"
+                        style="width:auto; padding:13px 20px;">Send</button>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <div class="panel-icon email">📧</div>
+                    <div>
+                        <div class="panel-label email">Email Writer</div>
+                        <div class="panel-desc">describe → generate</div>
+                    </div>
+                </div>
+                <select class="model-select" id="emailModelDesktop" title="Model"></select>
+            </div>
+            <div class="panel-body">
+                <div class="field-group">
+                    <span class="field-label">Saved drafts</span>
+                    <div id="draftsListDesktop" style="max-height:80px;overflow-y:auto;"></div>
+                </div>
+                <div class="field-group">
+                    <span class="field-label">Describe</span>
+                    <textarea id="emailDescDesktop" rows="4"></textarea>
+                </div>
+                <div class="field-group">
+                    <span class="field-label">Tone</span>
+                    <select id="emailToneDesktop">
+                        <option value="professional">Professional</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="formal">Formal</option>
+                        <option value="casual">Casual</option>
+                    </select>
+                </div>
+                <label style="font-size:12px;color:var(--muted);margin-bottom:8px;"><input type="checkbox" id="saveDraftDesktop"> Save as draft</label>
+                <button class="btn btn-email" onclick="writeEmailDesktop()" id="emailBtnDesktop">✉️ Write</button>
+                <div class="field-group" style="flex:1; min-height:0;">
+                    <span class="field-label">Output</span>
+                    <div class="response-box" id="emailResponseDesktop">Email appears here...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <div class="panel-icon pdf">📄</div>
+                    <div>
+                        <div class="panel-label pdf">PDF Chat</div>
+                        <div class="panel-desc">upload → ask</div>
+                    </div>
+                </div>
+                <select class="model-select" id="pdfModelDesktop" title="Model"></select>
+            </div>
+            <div class="panel-body">
+                <div class="field-group">
+                    <span class="field-label">Upload</span>
+                    <div class="file-upload">
+                        <input type="file" id="pdfFileDesktop" accept=".pdf" onchange="updateFileNameDesktop()">
+                        <div class="file-label" id="fileLabelDesktop">📎 Choose PDF</div>
+                    </div>
+                </div>
+                <button class="btn btn-pdf" onclick="uploadPDFDesktop()" id="uploadBtnDesktop">⚡ Index</button>
+                <div class="field-group">
+                    <span class="field-label">Select PDF</span>
+                    <select class="pdf-select" id="pdfSelectDesktop" onchange="selectPdfDesktop()"></select>
+                </div>
+                <div class="pdf-status" id="pdfStatusDesktop">○ No document</div>
+                <div class="field-group">
+                    <span class="field-label">Question</span>
+                    <textarea id="pdfQuestionDesktop" rows="3"></textarea>
+                </div>
+                <button class="btn btn-pdf" onclick="askPDFDesktop()" id="pdfBtnDesktop">🔍 Ask</button>
+                <div class="field-group" style="flex:1; min-height:0;">
+                    <span class="field-label">Answer</span>
+                    <div class="response-box" id="pdfResponseDesktop">Upload first...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentCard = 0;
+        const cards = document.querySelectorAll('.card');
+        const navBtns = document.querySelectorAll('.nav-btn');
+
+        // === LOAD MODELS ===
+        let availableModels = [];
+        async function loadModels() {
+            try {
+                const r = await fetch('/api/models');
+                const data = await r.json();
+                availableModels = data.models || [data.default || 'llama3.2:latest'];
+                const defaultModel = data.default || availableModels[0];
+                ['chatModelMobile','chatModelDesktop','emailModelMobile','emailModelDesktop','pdfModelMobile','pdfModelDesktop'].forEach(id => {
+                    const sel = document.getElementById(id);
+                    if (!sel) return;
+                    sel.innerHTML = availableModels.map(m => `<option value="${m}" ${m===defaultModel?'selected':''}>${m}</option>`).join('');
+                });
+            } catch (e) { console.warn('Could not load models:', e); }
+        }
+
+        // === LOAD CONVERSATIONS ===
+        async function loadConversations() {
+            const sidebarM = document.getElementById('convSidebarMobile');
+            const sidebarD = document.getElementById('convSidebarDesktop');
+            try {
+                const r = await fetch('/api/conversations');
+                const data = await r.json();
+                const convs = data.conversations || [];
+                const html = convs.length ? convs.map(c => 
+                    `<div class="conv-item" data-id="${c.id}" onclick="openConversation(${c.id})">${(c.title||'Chat').substring(0,20)}${(c.title||'').length>20?'…':''}</div>`
+                ).join('') : '<div class="conv-item" style="color:var(--muted);">No conversations</div>';
+                if (sidebarM) sidebarM.innerHTML = html;
+                if (sidebarD) sidebarD.innerHTML = html;
+            } catch (e) {
+                const err = '<div class="conv-item" style="color:var(--muted);">Error loading</div>';
+                if (sidebarM) sidebarM.innerHTML = err;
+                if (sidebarD) sidebarD.innerHTML = err;
+            }
+        }
+
+        async function openConversation(id) {
+            window.currentConversationId = id;
+            document.querySelectorAll('.conv-item[data-id]').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.conv-item[data-id="'+id+'"]').forEach(el => el.classList.add('active'));
+            try {
+                const r = await fetch('/api/conversations/' + id);
+                const data = await r.json();
+                const msgs = (data.messages || []).map(m => 
+                    `<div class="message ${m.role}"><span class="msg-label">${m.role==='user'?'you':'ai'}</span><div class="bubble">${m.content.replace(/</g,'&lt;')}</div></div>`
+                ).join('');
+                const containerM = document.getElementById('chatMessages');
+                const containerD = document.getElementById('chatMessagesDesktop');
+                if (containerM) { containerM.innerHTML = msgs || '<div class="empty-state"><div class="empty-icon">💬</div><div>No messages</div></div>'; hasMobileMessages = !!msgs; }
+                if (containerD) { containerD.innerHTML = msgs || '<div class="empty-state"><div class="empty-icon">💬</div><div>No messages</div></div>'; hasDesktopMessages = !!msgs; }
+            } catch (e) { console.error('Could not load conversation:', e); }
+        }
+
+        // === LOAD DRAFTS ===
+        async function loadDrafts() {
+            try {
+                const r = await fetch('/api/email/drafts');
+                const data = await r.json();
+                const drafts = data.drafts || [];
+                const html = drafts.length ? drafts.slice(0,5).map(d => 
+                    `<div class="draft-item" onclick="loadDraft(${d.id})">${(d.subject||'No subject').substring(0,30)}…</div>`
+                ).join('') : '<span style="color:var(--muted);font-size:11px;">No drafts</span>';
+                document.getElementById('draftsListMobile').innerHTML = html;
+                document.getElementById('draftsListDesktop').innerHTML = html;
+            } catch (e) { document.getElementById('draftsListMobile').innerHTML = '—'; document.getElementById('draftsListDesktop').innerHTML = '—'; }
+        }
+
+        async function loadDraft(id) {
+            try {
+                const r = await fetch('/api/email/drafts/' + id);
+                const d = await r.json();
+                document.getElementById('emailDesc').value = d.description || '';
+                document.getElementById('emailDescDesktop').value = d.description || '';
+                document.getElementById('emailTone').value = d.tone || 'professional';
+                document.getElementById('emailToneDesktop').value = d.tone || 'professional';
+                document.getElementById('emailResponse').textContent = (d.subject||'') + '\n\n' + (d.body||'');
+                document.getElementById('emailResponse').classList.add('active');
+                document.getElementById('emailResponseDesktop').textContent = (d.subject||'') + '\n\n' + (d.body||'');
+                document.getElementById('emailResponseDesktop').classList.add('active');
+            } catch (e) { console.error('Could not load draft:', e); }
+        }
+
+        // === LOAD PDFs ===
+        async function loadPdfs() {
+            try {
+                const r = await fetch('/api/pdfs');
+                const data = await r.json();
+                const pdfs = data.pdfs || [];
+                const opts = '<option value="">— Select PDF —</option>' + pdfs.map(p => 
+                    `<option value="${p.id}">${p.filename}</option>`
+                ).join('');
+                document.getElementById('pdfSelectMobile').innerHTML = opts;
+                document.getElementById('pdfSelectDesktop').innerHTML = opts;
+            } catch (e) { document.getElementById('pdfSelectMobile').innerHTML = '<option value="">—</option>'; document.getElementById('pdfSelectDesktop').innerHTML = '<option value="">—</option>'; }
+        }
+
+        function selectPdfMobile() {
+            const sel = document.getElementById('pdfSelectMobile');
+            currentPdfId = sel.value ? parseInt(sel.value) : null;
+            document.getElementById('pdfStatus').textContent = currentPdfId ? '✓ PDF selected' : '○ No document loaded';
+            document.getElementById('pdfStatus').className = currentPdfId ? 'pdf-status success' : 'pdf-status';
+        }
+        function selectPdfDesktop() {
+            const sel = document.getElementById('pdfSelectDesktop');
+            currentDesktopPdfId = sel.value ? parseInt(sel.value) : null;
+            document.getElementById('pdfStatusDesktop').textContent = currentDesktopPdfId ? '✓ PDF selected' : '○ No document';
+            document.getElementById('pdfStatusDesktop').className = currentDesktopPdfId ? 'pdf-status success' : 'pdf-status';
+        }
+
+        // Init on load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadModels();
+            loadConversations();
+            loadDrafts();
+            loadPdfs();
+        });
+
+        // Swipe navigation
+        function swipeToCard(index) {
+            currentCard = index;
+            cards.forEach((card, i) => {
+                card.classList.remove('active', 'prev', 'next');
+                card.setAttribute('data-index', i);
+                if (i === index) card.classList.add('active');
+                else if (i < index) card.classList.add('prev');
+                else card.classList.add('next');
+            });
+            navBtns.forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+        }
+
+        // Touch swipe
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const wrapper = document.getElementById('cardsWrapper');
+
+        if (wrapper) {
+            wrapper.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            wrapper.addEventListener('touchend', e => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }, { passive: true });
+        }
+
+        function handleSwipe() {
+            if (touchEndX < touchStartX - 50 && currentCard < 2) swipeToCard(currentCard + 1);
+            if (touchEndX > touchStartX + 50 && currentCard > 0) swipeToCard(currentCard - 1);
+        }
+
+        // Stream helper with conversation tracking
+        window.currentConversationId = null;
+
+        async function streamResponse(url, formData, onChunk, onDone) {
+            const response = await fetch(url, { method: 'POST', body: formData });
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const text = decoder.decode(value);
+                const lines = text.split('\n').filter(l => l.startsWith('data: '));
+                for (const line of lines) {
+                    const data = line.slice(6);
+                    if (data === '[DONE]') { onDone(); return; }
+                    try {
+                        const parsed = JSON.parse(data);
+
+                        // Store conversation_id if present (for chat persistence)
+                        if (parsed.conversation_id) {
+                            window.currentConversationId = parsed.conversation_id;
+                            loadConversations();
+                        }
+
+                        // Only pass content to the callback (not conversation_id!)
+                        if (parsed.content) {
+                            onChunk(parsed.content);
+                        }
+
+                        // Handle errors
+                        if (parsed.error) {
+                            console.error('❌ Stream error:', parsed.error);
+                        }
+                    } catch (e) {
+                        // Ignore parse errors
+                    }
+                }
+            }
+        }
+
+        // === MOBILE CHAT ===
+        let hasMobileMessages = false;
+        async function sendChat() {
+            const input = document.getElementById('chatInput');
+            const messages = document.getElementById('chatMessages');
+            const btn = document.getElementById('chatBtn');
+            const message = input.value.trim();
+            if (!message) return;
+
+            if (!hasMobileMessages) { messages.innerHTML = ''; hasMobileMessages = true; }
+
+            messages.innerHTML += `<div class="message user"><span class="msg-label">you</span><div class="bubble">${message}</div></div>`;
+            input.value = '';
+            btn.disabled = true;
+            messages.scrollTop = messages.scrollHeight;
+
+            const msgId = 'msg_' + Date.now();
+            messages.innerHTML += `<div class="message assistant"><span class="msg-label">ai</span><div class="bubble" id="${msgId}">...</div></div>`;
+            messages.scrollTop = messages.scrollHeight;
+
+            const formData = new FormData();
+            formData.append('message', message);
+            formData.append('model', document.getElementById('chatModelMobile').value || '');
+            if (window.currentConversationId) formData.append('conversation_id', window.currentConversationId);
+
+            let responseText = '';
+            await streamResponse('/api/chat', formData,
+                chunk => {
+                    responseText += chunk;
+                    const el = document.getElementById(msgId);
+                    if (el) el.textContent = responseText;
+                    messages.scrollTop = messages.scrollHeight;
+                },
+                () => { btn.disabled = false; }
+            );
+        }
+
+        // === DESKTOP CHAT ===
+        let hasDesktopMessages = false;
+        async function sendChatDesktop() {
+            const input = document.getElementById('chatInputDesktop');
+            const messages = document.getElementById('chatMessagesDesktop');
+            const btn = document.getElementById('chatBtnDesktop');
+            const message = input.value.trim();
+            if (!message) return;
+
+            if (!hasDesktopMessages) { messages.innerHTML = ''; hasDesktopMessages = true; }
+
+            messages.innerHTML += `<div class="message user"><span class="msg-label">you</span><div class="bubble">${message}</div></div>`;
+            input.value = '';
+            btn.disabled = true;
+            messages.scrollTop = messages.scrollHeight;
+
+            const msgId = 'msg_' + Date.now();
+            messages.innerHTML += `<div class="message assistant"><span class="msg-label">ai</span><div class="bubble" id="${msgId}">...</div></div>`;
+            messages.scrollTop = messages.scrollHeight;
+
+            const formData = new FormData();
+            formData.append('message', message);
+            formData.append('model', document.getElementById('chatModelDesktop').value || '');
+            if (window.currentConversationId) formData.append('conversation_id', window.currentConversationId);
+
+            let responseText = '';
+            await streamResponse('/api/chat', formData,
+                chunk => {
+                    responseText += chunk;
+                    const el = document.getElementById(msgId);
+                    if (el) el.textContent = responseText;
+                    messages.scrollTop = messages.scrollHeight;
+                },
+                () => { btn.disabled = false; }
+            );
+        }
+
+        // === START NEW CHAT ===
+        function startNewChat() {
+            // Reset conversation ID
+            window.currentConversationId = null;
+
+            // Clear mobile chat
+            const mobileMsgs = document.getElementById('chatMessages');
+            if (mobileMsgs) {
+                mobileMsgs.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div>Start a conversation</div></div>';
+                hasMobileMessages = false;
+            }
+
+            // Clear desktop chat
+            const desktopMsgs = document.getElementById('chatMessagesDesktop');
+            if (desktopMsgs) {
+                desktopMsgs.innerHTML = '<div class="empty-state"><div class="empty-icon">💬</div><div>Start a conversation</div></div>';
+                hasDesktopMessages = false;
+            }
+
+            console.log('✅ Started new conversation');
+        }
+
+        // === MOBILE EMAIL ===
+        async function writeEmail() {
+            const desc = document.getElementById('emailDesc').value.trim();
+            const tone = document.getElementById('emailTone').value;
+            const responseEl = document.getElementById('emailResponse');
+            const btn = document.getElementById('emailBtn');
+            if (!desc) return;
+
+            responseEl.textContent = '';
+            responseEl.classList.remove('active');
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('description', desc);
+            formData.append('tone', tone);
+            formData.append('model', document.getElementById('emailModelMobile').value || '');
+            formData.append('save_draft', document.getElementById('saveDraftMobile').checked ? 'true' : 'false');
+
+            await streamResponse('/api/email', formData,
+                chunk => { responseEl.classList.add('active'); responseEl.textContent += chunk; },
+                () => { btn.disabled = false; loadDrafts(); }
+            );
+        }
+
+        // === DESKTOP EMAIL ===
+        async function writeEmailDesktop() {
+            const desc = document.getElementById('emailDescDesktop').value.trim();
+            const tone = document.getElementById('emailToneDesktop').value;
+            const responseEl = document.getElementById('emailResponseDesktop');
+            const btn = document.getElementById('emailBtnDesktop');
+            if (!desc) return;
+
+            responseEl.textContent = '';
+            responseEl.classList.remove('active');
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('description', desc);
+            formData.append('tone', tone);
+            formData.append('model', document.getElementById('emailModelDesktop').value || '');
+            formData.append('save_draft', document.getElementById('saveDraftDesktop').checked ? 'true' : 'false');
+
+            await streamResponse('/api/email', formData,
+                chunk => { responseEl.classList.add('active'); responseEl.textContent += chunk; },
+                () => { btn.disabled = false; loadDrafts(); }
+            );
+        }
+
+        // === MOBILE PDF ===
+        let currentPdfId = null;
+
+        function updateFileName() {
+            const file = document.getElementById('pdfFile').files[0];
+            const label = document.getElementById('fileLabel');
+            if (file) label.textContent = `📄 ${file.name}`;
+        }
+
+        async function uploadPDF() {
+            const file = document.getElementById('pdfFile').files[0];
+            const status = document.getElementById('pdfStatus');
+            const btn = document.getElementById('uploadBtn');
+            if (!file) return;
+
+            status.textContent = '⏳ Indexing...';
+            status.className = 'pdf-status';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/pdf/upload', { method: 'POST', body: formData });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                status.textContent = `✓ ${data.pages} pages · ${data.chunks} chunks`;
+                status.className = 'pdf-status success';
+                currentPdfId = data.pdf_id;
+                await loadPdfs();
+                document.getElementById('pdfSelectMobile').value = currentPdfId;
+            } else {
+                status.textContent = '✗ Error';
+                status.className = 'pdf-status error';
+            }
+            btn.disabled = false;
+        }
+
+        async function askPDF() {
+            const question = document.getElementById('pdfQuestion').value.trim();
+            const responseEl = document.getElementById('pdfResponse');
+            const btn = document.getElementById('pdfBtn');
+            const pdfId = document.getElementById('pdfSelectMobile').value || currentPdfId;
+            if (!question) return;
+
+            if (!pdfId) {
+                responseEl.textContent = 'Please upload a PDF first!';
+                responseEl.classList.add('active');
+                return;
+            }
+
+            responseEl.textContent = '';
+            responseEl.classList.remove('active');
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('question', question);
+            formData.append('pdf_id', pdfId);
+            formData.append('model', document.getElementById('pdfModelMobile').value || '');
+
+            await streamResponse('/api/pdf/ask', formData,
+                chunk => { responseEl.classList.add('active'); responseEl.textContent += chunk; },
+                () => { btn.disabled = false; }
+            );
+        }
+
+        // === DESKTOP PDF ===
+        let currentDesktopPdfId = null;
+
+        function updateFileNameDesktop() {
+            const file = document.getElementById('pdfFileDesktop').files[0];
+            const label = document.getElementById('fileLabelDesktop');
+            if (file) label.textContent = `📄 ${file.name}`;
+        }
+
+        async function uploadPDFDesktop() {
+            const file = document.getElementById('pdfFileDesktop').files[0];
+            const status = document.getElementById('pdfStatusDesktop');
+            const btn = document.getElementById('uploadBtnDesktop');
+            if (!file) return;
+
+            status.textContent = '⏳ Indexing...';
+            status.className = 'pdf-status';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/pdf/upload', { method: 'POST', body: formData });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                status.textContent = `✓ ${data.pages} pages · ${data.chunks} chunks`;
+                status.className = 'pdf-status success';
+                currentDesktopPdfId = data.pdf_id;
+                await loadPdfs();
+                document.getElementById('pdfSelectDesktop').value = currentDesktopPdfId;
+            } else {
+                status.textContent = '✗ Error';
+                status.className = 'pdf-status error';
+            }
+            btn.disabled = false;
+        }
+
+        async function askPDFDesktop() {
+            const question = document.getElementById('pdfQuestionDesktop').value.trim();
+            const responseEl = document.getElementById('pdfResponseDesktop');
+            const btn = document.getElementById('pdfBtnDesktop');
+            const pdfId = document.getElementById('pdfSelectDesktop').value || currentDesktopPdfId;
+            if (!question) return;
+
+            if (!pdfId) {
+                responseEl.textContent = 'Please upload a PDF first!';
+                responseEl.classList.add('active');
+                return;
+            }
+
+            responseEl.textContent = '';
+            responseEl.classList.remove('active');
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('question', question);
+            formData.append('pdf_id', pdfId);
+            formData.append('model', document.getElementById('pdfModelDesktop').value || '');
+
+            await streamResponse('/api/pdf/ask', formData,
+                chunk => { responseEl.classList.add('active'); responseEl.textContent += chunk; },
+                () => { btn.disabled = false; }
+            );
+        }
+    </script>
+
+</body>
+
+</html>

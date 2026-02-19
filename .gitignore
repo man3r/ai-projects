@@ -1,0 +1,5 @@
+/voice-analyzer.code-workspace
+.venv/
+venv/
+__pycache__/.venv/
+venv/

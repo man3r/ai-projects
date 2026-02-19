@@ -1,0 +1,102 @@
+{
+  "result_id": "ab494838-6616-4130-855d-0a32883ac52c",
+  "audio_filename": "harsh_tone.m4a",
+  "analyzed_at": "2026-02-13T07:32:58.900619Z",
+  "transcript": {
+    "full_text": "Hey, hi, this is ABC. I am trying to record this for my voice analyzer project. I want to create a little harsh tone on this to test my model. What the hell was happening on the project yesterday? Why was it delayed? So I'm kind of very, very, very frustrated on this. Guys, we got to make it faster. I can't skip deadlines and this is the last and final warning. So please, let's not miss the deadlines. I want this to be done by no later than today 5 p.m. evening. Alright, yeah, thanks.",
+    "segment_count": 6
+  },
+  "overall_sentiment": "negative",
+  "overall_sentiment_score": 0.7641798257827759,
+  "overall_sentiment_scores": {
+    "negative": 0.7641798257827759,
+    "neutral": 0.20883536338806152,
+    "positive": 0.026984894648194313
+  },
+  "overall_tone": "Frustrated",
+  "insights": [
+    "Overall sentiment was negative; consider follow-up or coaching.",
+    "Frustration detected in the conversation; review handling and escalation.",
+    "Tone varied across the call; mid-call or closing tone may need attention."
+  ],
+  "segment_breakdown": [
+    {
+      "start": 0.0,
+      "end": 11.28,
+      "text": "Hey, hi, this is ABC. I am trying to record this for my voice analyzer project. I want to",
+      "sentiment": "neutral",
+      "sentiment_score": 0.5264828205108643,
+      "tone": "Neutral",
+      "scores": {
+        "neutral": 0.5264828205108643,
+        "positive": 0.4660468101501465,
+        "negative": 0.007470397744327784
+      }
+    },
+    {
+      "start": 11.28,
+      "end": 17.56,
+      "text": "create a little harsh tone on this to test my model. What the hell was happening on the",
+      "sentiment": "negative",
+      "sentiment_score": 0.8178756833076477,
+      "tone": "Neutral",
+      "scores": {
+        "negative": 0.8178756833076477,
+        "neutral": 0.1724833846092224,
+        "positive": 0.009640919044613838
+      }
+    },
+    {
+      "start": 17.56,
+      "end": 23.68,
+      "text": "project yesterday? Why was it delayed? So I'm kind of very, very, very frustrated on this.",
+      "sentiment": "negative",
+      "sentiment_score": 0.9479176998138428,
+      "tone": "Frustrated",
+      "scores": {
+        "negative": 0.9479176998138428,
+        "neutral": 0.04703699052333832,
+        "positive": 0.005045352037996054
+      }
+    },
+    {
+      "start": 23.84,
+      "end": 30.32,
+      "text": "Guys, we got to make it faster. I can't skip deadlines and this is the last and final warning.",
+      "sentiment": "neutral",
+      "sentiment_score": 0.5080537796020508,
+      "tone": "Neutral",
+      "scores": {
+        "neutral": 0.5080537796020508,
+        "negative": 0.2511543035507202,
+        "positive": 0.240791916847229
+      }
+    },
+    {
+      "start": 31.68,
+      "end": 37.92,
+      "text": "So please, let's not miss the deadlines. I want this to be done by no later than today 5 p.m.",
+      "sentiment": "neutral",
+      "sentiment_score": 0.5966663360595703,
+      "tone": "Professional",
+      "scores": {
+        "neutral": 0.5966663360595703,
+        "positive": 0.32804179191589355,
+        "negative": 0.0752919390797615
+      }
+    },
+    {
+      "start": 39.36,
+      "end": 41.36,
+      "text": "evening. Alright, yeah, thanks.",
+      "sentiment": "positive",
+      "sentiment_score": 0.7815763354301453,
+      "tone": "Neutral",
+      "scores": {
+        "positive": 0.7815763354301453,
+        "neutral": 0.21235086023807526,
+        "negative": 0.006072780583053827
+      }
+    }
+  ]
+}
