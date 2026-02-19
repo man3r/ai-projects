@@ -1,0 +1,9 @@
+/voice-analyzer.code-workspace
+.venv/
+venv/
+__pycache__/
+.env
+*.db
+*.db-shm
+*.db-wal
+.DS_Store
