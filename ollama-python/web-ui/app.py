@@ -23,6 +23,8 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from typing import Optional, List  # ← Make sure this is here
 from pydantic import BaseModel
+
+
 import json
 import os
 # ... rest of your imports
@@ -1186,6 +1188,40 @@ async def storefront_products(
     }
 
 
+@app.post("/store/{slug}/chat")
+async def storefront_chat(
+    slug: str,
+    message: str = Form(...),
+    session_id: str = Form(...),
+    cart: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """AI chat ordering"""
+    business = get_business_by_slug(db, slug)
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    # Parse cart if provided
+    cart_data = json.loads(cart) if cart else {"items": []}
+    
+    # Build context
+    context = {
+        "cart": cart_data.get("items", []),
+        "session_id": session_id
+    }
+    
+    # Get AI response - pass db session correctly
+    response = await chat_with_customer(
+        message=message,
+        business_id=business.id,
+        db=db,  # Pass the actual db session
+        context=context
+    )
+    
+    return response
+
+
 @app.get("/api/store/dashboard")
 async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
     """Admin dashboard stats"""
@@ -1212,4 +1248,121 @@ async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
             "revenue": sum(o.total for o in today_orders if o.status == 'delivered')
         },
         "week": stats
+    }
+
+@app.get("/store/{slug}", response_class=HTMLResponse)
+async def storefront_home(slug: str, request: Request, db: Session = Depends(get_db)):
+    """Customer landing page"""
+    business = get_business_by_slug(db, slug)
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    return templates.TemplateResponse("storefront/store.html", {
+        "request": request,
+        "business": business
+    })
+
+
+@app.get("/store/{slug}/cart", response_class=HTMLResponse)
+async def storefront_cart(slug: str, request: Request):
+    """Cart and checkout page"""
+    return templates.TemplateResponse("storefront/cart.html", {
+        "request": request
+    })
+
+@app.post("/store/{slug}/orders")
+async def storefront_place_order(
+    slug: str,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Place a new order"""
+    business = get_business_by_slug(db, slug)
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    if not business.is_open:
+        return {"status": "error", "message": "Store is currently closed"}
+    
+    # Get JSON body
+    body = await request.json()
+    
+    # Get or create customer
+    customer = get_or_create_customer(
+        db,
+        business.id,
+        body['customer_phone'],
+        body.get('customer_name')
+    )
+    
+    # Create order
+    order = create_order(
+        db,
+        business_id=business.id,
+        customer_id=customer.id,
+        items=body['items'],
+        delivery_address=body['delivery_address'],
+        customer_notes=body.get('customer_notes'),
+        delivery_instructions=body.get('delivery_instructions')
+    )
+    
+    return {
+        "status": "success",
+        "order_number": order.order_number,
+        "order_id": order.id,
+        "total": order.total,
+        "estimated_delivery": order.estimated_delivery_time.isoformat() if order.estimated_delivery_time else None
+    }
+
+
+@app.get("/store/{slug}/orders/{order_number}")
+async def storefront_track_order(
+    slug: str,
+    order_number: str,
+    db: Session = Depends(get_db)
+):
+    """Track order status (API endpoint for AJAX)"""
+    business = get_business_by_slug(db, slug)
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    order = get_order_by_number(db, order_number)
+    
+    if not order or order.business_id != business.id:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    return {
+        "order_number": order.order_number,
+        "status": order.status,
+        "items": [
+            {
+                "name": item.product_name,
+                "quantity": item.quantity,
+                "total": item.total_price
+            }
+            for item in order.items
+        ],
+        "customer": {
+            "phone": order.customer.phone
+        },
+        "total": order.total,
+        "delivery": {
+            "address": order.delivery_address,
+            "estimated_time": order.estimated_delivery_time.isoformat() if order.estimated_delivery_time else None
+        },
+        "pricing": {
+            "subtotal": order.subtotal,
+            "delivery_fee": order.delivery_fee,
+            "total": order.total
+        },
+        "timestamps": {
+            "created_at": order.created_at.isoformat(),
+            "confirmed_at": order.confirmed_at.isoformat() if order.confirmed_at else None,
+            "preparing_at": order.preparing_started_at.isoformat() if order.preparing_started_at else None,
+            "ready_at": order.ready_at.isoformat() if order.ready_at else None,
+            "delivered_at": order.delivered_at.isoformat() if order.delivered_at else None
+        }
     }

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Your Order</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00C853;
+            --primary-dark: #00A043;
+            --accent: #FF6F00;
+            --bg: #FFFFFF;
+            --surface: #F5F5F5;
+            --text: #37474F;
+            --text-light: #616161;
+            --border: #E0E0E0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .header {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+        }
+
+        .header-content {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .order-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .order-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .order-number {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .order-status {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .estimated-time {
+            font-size: 1.1rem;
+            color: var(--text);
+        }
+
+        /* Progress Tracker */
+        .progress-tracker {
+            position: relative;
+            margin: 3rem 0;
+        }
+
+        .progress-line {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            right: 24px;
+            height: 4px;
+            background: var(--border);
+            z-index: 0;
+        }
+
+        .progress-line-fill {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.5s ease;
+        }
+
+        .progress-steps {
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            z-index: 1;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .step-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: white;
+            border: 4px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s;
+        }
+
+        .step.completed .step-icon {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .step.active .step-icon {
+            background: var(--primary);
+            border-color: var(--primary);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .step-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: center;
+            color: var(--text-light);
+        }
+
+        .step.completed .step-label,
+        .step.active .step-label {
+            color: var(--primary);
+        }
+
+        .step-time {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+
+        /* Order Items */
+        .order-items {
+            margin-top: 2rem;
+        }
+
+        .order-items h3 {
+            margin-bottom: 1rem;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-name {
+            font-weight: 600;
+        }
+
+        .item-quantity {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .item-price {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Delivery Info */
+        .delivery-info {
+            background: var(--surface);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-top: 2rem;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 0.75rem;
+        }
+
+        .info-label {
+            font-weight: 600;
+            min-width: 100px;
+            color: var(--text-light);
+        }
+
+        .info-value {
+            flex: 1;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .button {
+            flex: 1;
+            padding: 0.75rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .button-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .button-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .button-secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .button-secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .step-label {
+                font-size: 0.75rem;
+            }
+
+            .step-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+
+            .progress-line {
+                top: 20px;
+                left: 20px;
+                right: 20px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>🔍 Track Your Order</h1>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="order-card">
+            <div class="order-header">
+                <div class="order-number">Order #<span id="orderNumber">Loading...</span></div>
+                <div class="order-status" id="orderStatus">Preparing your order...</div>
+                <div class="estimated-time" id="estimatedTime"></div>
+            </div>
+
+            <!-- Progress Tracker -->
+            <div class="progress-tracker">
+                <div class="progress-line">
+                    <div class="progress-line-fill" id="progressFill" style="width: 0%"></div>
+                </div>
+                <div class="progress-steps" id="progressSteps">
+                    <div class="step" data-status="pending">
+                        <div class="step-icon">📝</div>
+                        <div class="step-label">Order Placed</div>
+                        <div class="step-time" id="time-pending"></div>
+                    </div>
+                    <div class="step" data-status="confirmed">
+                        <div class="step-icon">✅</div>
+                        <div class="step-label">Confirmed</div>
+                        <div class="step-time" id="time-confirmed"></div>
+                    </div>
+                    <div class="step" data-status="preparing">
+                        <div class="step-icon">👨‍🍳</div>
+                        <div class="step-label">Preparing</div>
+                        <div class="step-time" id="time-preparing"></div>
+                    </div>
+                    <div class="step" data-status="ready">
+                        <div class="step-icon">📦</div>
+                        <div class="step-label">Ready</div>
+                        <div class="step-time" id="time-ready"></div>
+                    </div>
+                    <div class="step" data-status="delivered">
+                        <div class="step-icon">🎉</div>
+                        <div class="step-label">Delivered</div>
+                        <div class="step-time" id="time-delivered"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Items -->
+            <div class="order-items">
+                <h3>📦 Your Items</h3>
+                <div id="itemsList"></div>
+            </div>
+
+            <!-- Delivery Info -->
+            <div class="delivery-info">
+                <div class="info-row">
+                    <div class="info-label">📞 Phone:</div>
+                    <div class="info-value" id="customerPhone">-</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">📍 Address:</div>
+                    <div class="info-value" id="deliveryAddress">-</div>
+                </div>
+                <div class="info-row">
+                    <div class="info-label">💰 Total:</div>
+                    <div class="info-value" id="orderTotal" style="font-weight: 700; color: var(--primary);">₹0</div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <a href="javascript:location.reload()" class="button button-secondary">🔄 Refresh Status</a>
+                <a id="shopButton" class="button button-primary">🛍️ Continue Shopping</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const slug = window.location.pathname.split('/')[2];
+        const orderNumber = window.location.pathname.split('/')[4];
+
+        const statusSteps = ['pending', 'confirmed', 'preparing', 'ready', 'delivered'];
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOrderDetails();
+            document.getElementById('shopButton').href = `/store/${slug}`;
+            
+            // Auto-refresh every 30 seconds
+            setInterval(loadOrderDetails, 30000);
+        });
+
+        async function loadOrderDetails() {
+            try {
+                const response = await fetch(`/store/${slug}/orders/${orderNumber}`);
+                const order = await response.json();
+
+                // Update order info
+                document.getElementById('orderNumber').textContent = order.order_number;
+                document.getElementById('customerPhone').textContent = order.customer?.phone || '-';
+                document.getElementById('deliveryAddress').textContent = order.delivery?.address?.address || '-';
+                document.getElementById('orderTotal').textContent = `₹${order.pricing?.total || 0}`;
+
+                // Update status
+                updateStatus(order.status);
+
+                // Update times
+                if (order.timestamps) {
+                    updateTimestamp('pending', order.timestamps.created_at);
+                    updateTimestamp('confirmed', order.timestamps.confirmed_at);
+                    updateTimestamp('preparing', order.timestamps.preparing_at);
+                    updateTimestamp('ready', order.timestamps.ready_at);
+                    updateTimestamp('delivered', order.timestamps.delivered_at);
+                }
+
+                // Render items
+                renderItems(order.items);
+
+                // Update estimated time
+                if (order.delivery?.estimated_time) {
+                    const eta = new Date(order.delivery.estimated_time);
+                    document.getElementById('estimatedTime').textContent = 
+                        `Estimated delivery: ${eta.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'})}`;
+                }
+            } catch (error) {
+                console.error('Error loading order:', error);
+                document.getElementById('orderStatus').textContent = 'Error loading order details';
+            }
+        }
+
+        function updateStatus(currentStatus) {
+            const currentIndex = statusSteps.indexOf(currentStatus);
+            
+            // Update status text
+            const statusText = {
+                'pending': '⏳ Order Received',
+                'confirmed': '✅ Order Confirmed',
+                'preparing': '👨‍🍳 Preparing Your Food',
+                'ready': '📦 Order Ready!',
+                'delivered': '🎉 Delivered!'
+            };
+            document.getElementById('orderStatus').textContent = statusText[currentStatus] || 'Processing...';
+
+            // Update progress bar
+            const progress = currentIndex >= 0 ? (currentIndex / (statusSteps.length - 1)) * 100 : 0;
+            document.getElementById('progressFill').style.width = progress + '%';
+
+            // Update step icons
+            document.querySelectorAll('.step').forEach((step, index) => {
+                step.classList.remove('completed', 'active');
+                if (index < currentIndex) {
+                    step.classList.add('completed');
+                } else if (index === currentIndex) {
+                    step.classList.add('active');
+                }
+            });
+        }
+
+        function updateTimestamp(status, timestamp) {
+            if (!timestamp) return;
+            
+            const timeElement = document.getElementById(`time-${status}`);
+            if (timeElement) {
+                const date = new Date(timestamp);
+                timeElement.textContent = date.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+        }
+
+        function renderItems(items) {
+            if (!items || items.length === 0) return;
+
+            const container = document.getElementById('itemsList');
+            container.innerHTML = items.map(item => `
+                <div class="order-item">
+                    <div>
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-quantity">Qty: ${item.quantity}</div>
+                    </div>
+                    <div class="item-price">₹${item.total}</div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
