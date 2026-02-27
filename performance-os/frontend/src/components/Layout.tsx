@@ -13,7 +13,7 @@ export const Layout: React.FC = () => {
 
     return (
         <div className="app-wrapper">
-            <div className="app-container">
+            <div className="app-container main-app-frame">
                 {/* Desktop Sidebar */}
                 <div className="hidden lg:block w-[280px] shrink-0 border-r border-[#1a1d27] bg-[#0f121b]">
                     <Sidebar />

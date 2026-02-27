@@ -276,8 +276,8 @@ p {
   -webkit-overflow-scrolling: touch;
   /* Enable smooth scrolling on iOS */
   width: 100%;
-  padding-bottom: calc(var(--mobile-nav-height) + var(--sab));
-  /* Space for absolutely positioned nav + safe area */
+  padding-bottom: calc(var(--mobile-nav-height) + var(--sab) + 20px);
+  /* Space for absolutely positioned nav + safe area + floating margin */
 }
 
 @media (min-width: 1024px) {
@@ -359,5 +359,40 @@ p {
 @keyframes progress {
   0% {
     stroke-dasharray: 0 100;
+  }
+}
+
+/* User Proposed Mobile Styles */
+@media (max-width: 1023px) {
+  .main-app-frame {
+    /* This ensures the background of the app stays dark */
+    background-color: var(--bg-surface);
+    display: flex;
+    flex-direction: column;
+
+    /* The Secret Sauce: Matching the iPhone's physical corner radius */
+    /* iPhone 17 corners are roughly 48px to 52px */
+    border-bottom-left-radius: 50px;
+    border-bottom-right-radius: 50px;
+
+    /* This prevents child elements from 'poking out' */
+    overflow: hidden;
+
+    /* Ensure it doesn't overlap the bottom gesture area (also pushing nav up) */
+    padding-bottom: var(--sab);
+  }
+
+  .bottom-nav {
+    /* Make the nav bar itself rounded to sit inside the frame */
+    border-radius: 40px;
+    margin: 10px 15px;
+    /* Gives it a floating 'island' look */
+    padding-bottom: 0 !important;
+    /* Override inline safe area padding since we floated it */
+    background: rgba(26, 29, 39, 0.7) !important;
+    /* Subtle glassmorphism, override solid bg */
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   }
 }
