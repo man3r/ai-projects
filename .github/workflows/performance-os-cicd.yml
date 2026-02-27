@@ -1,6 +1,5 @@
 name: CI/CD — Performance OS
 
-# Trigger on pushes to main that touch anything inside performance-os/
 on:
   push:
     branches: [main, temp_main]
@@ -11,7 +10,7 @@ on:
     branches: [main]
     paths:
       - "performance-os/**"
-  workflow_dispatch:  # Allows manual triggering from GitHub UI
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -28,11 +27,9 @@ jobs:
         working-directory: performance-os
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
@@ -41,11 +38,10 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Validate FastAPI app imports correctly
+      - name: Validate FastAPI app imports
         run: python -c "from app.main import app; print('✅ Backend OK')"
 
-      - name: Set up Node 20
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
@@ -59,22 +55,31 @@ jobs:
         working-directory: performance-os/frontend
         run: npm run build
 
-  # ─── Job 2: Build and push Docker images to GHCR ─────────────────────────────
-  build-and-push:
-    name: Build & Push Images
-    runs-on: ubuntu-latest
+  # ─── Job 2: Build each platform natively in parallel ─────────────────────────
+  # Strategy: Build amd64 on an amd64 runner + arm64 on a native arm64 runner
+  # simultaneously, then merge into a single multi-arch manifest.
+  # This eliminates QEMU cross-compilation — the main source of slowness.
+  build:
+    name: Build (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
     needs: test
-    # Only push images on actual commits to main/temp_main, not PRs
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
-      packages: write  # Required to push to GHCR
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm  # Native ARM64 runner — no QEMU needed
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -84,40 +89,74 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      # Sanitize platform name for use in cache keys (linux/arm64 → linux-arm64)
+      - name: Prepare platform tag
+        id: platform
+        run: echo "tag=$(echo ${{ matrix.platform }} | tr '/' '-')" >> $GITHUB_OUTPUT
+
       # ── Backend ──
-      - name: Build and push backend image
+      - name: Build backend (${{ matrix.platform }})
         uses: docker/build-push-action@v5
         with:
           context: ./performance-os
           file: ./performance-os/Dockerfile
           push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.BACKEND_IMAGE }}:latest
-            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          platforms: ${{ matrix.platform }}
+          tags: ${{ env.BACKEND_IMAGE }}:${{ steps.platform.outputs.tag }}-${{ github.sha }}
+          cache-from: type=gha,scope=backend-${{ steps.platform.outputs.tag }}
+          cache-to: type=gha,scope=backend-${{ steps.platform.outputs.tag }},mode=max
 
       # ── Frontend ──
-      - name: Build and push frontend image
+      - name: Build frontend (${{ matrix.platform }})
         uses: docker/build-push-action@v5
         with:
           context: ./performance-os/frontend
           file: ./performance-os/frontend/Dockerfile
           push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.FRONTEND_IMAGE }}:latest
-            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          platforms: ${{ matrix.platform }}
+          tags: ${{ env.FRONTEND_IMAGE }}:${{ steps.platform.outputs.tag }}-${{ github.sha }}
+          cache-from: type=gha,scope=frontend-${{ steps.platform.outputs.tag }}
+          cache-to: type=gha,scope=frontend-${{ steps.platform.outputs.tag }},mode=max
 
-  # ─── Job 3: Output deploy instructions ───────────────────────────────────────
+  # ─── Job 3: Merge platform images into a single multi-arch manifest ───────────
+  merge-manifests:
+    name: Merge Manifests
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    permissions:
+      packages: write
+
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge backend manifest
+        run: |
+          docker buildx imagetools create \
+            --tag ${{ env.BACKEND_IMAGE }}:latest \
+            --tag ${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
+            ${{ env.BACKEND_IMAGE }}:linux-amd64-${{ github.sha }} \
+            ${{ env.BACKEND_IMAGE }}:linux-arm64-${{ github.sha }}
+
+      - name: Merge frontend manifest
+        run: |
+          docker buildx imagetools create \
+            --tag ${{ env.FRONTEND_IMAGE }}:latest \
+            --tag ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            ${{ env.FRONTEND_IMAGE }}:linux-amd64-${{ github.sha }} \
+            ${{ env.FRONTEND_IMAGE }}:linux-arm64-${{ github.sha }}
+
+  # ─── Job 4: Output deploy instructions ───────────────────────────────────────
   deploy-instructions:
     name: Deploy Instructions
     runs-on: ubuntu-latest
-    needs: build-and-push
-    if: github.event_name == 'push'
+    needs: merge-manifests
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Print rollout commands
