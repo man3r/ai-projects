@@ -1,3 +1,6 @@
+from pydantic import BaseModel
+from typing import List, Optional
+
 from fastapi import FastAPI, UploadFile, File, Form, Request, HTTPException, Depends
 from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -13,6 +16,72 @@ from auth import oauth, get_current_user
 from database.db import get_db, init_db
 from database import crud
 from datetime import datetime
+from fastapi import FastAPI, Request, Depends, Form, File, UploadFile, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+from typing import Optional, List  # ← Make sure this is here
+from pydantic import BaseModel
+
+
+import json
+import os
+# ... rest of your imports
+
+# Store CRUD imports
+from database.crud_store import (
+    get_business_by_user, 
+    get_business_by_slug,
+    create_business,
+    list_categories, 
+    create_category,
+    list_products, 
+    get_product, 
+    create_product, 
+    update_product, 
+    search_products,
+    get_or_create_customer, 
+    create_order,
+    list_orders, 
+    get_order, 
+    get_order_by_number, 
+    update_order_status,
+    get_today_orders, 
+    get_order_stats, 
+    get_popular_products
+)
+
+
+# ═══════════════════════════════════════════════════════════════════
+# PYDANTIC MODELS (Request Validation)
+# ═══════════════════════════════════════════════════════════════════
+
+class ProductCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    category_id: Optional[int] = None
+    price: float
+    unit: Optional[str] = None
+    in_stock: bool = True
+    is_featured: bool = False
+
+class OrderCreate(BaseModel):
+    items: List[dict]  # [{"product_id": 1, "quantity": 2}]
+    customer_phone: str
+    customer_name: Optional[str] = None
+    delivery_address: dict
+    customer_notes: Optional[str] = None
+    delivery_instructions: Optional[str] = None
+
+# AI helpers
+from utils.ai_helpers import (
+    chat_with_customer, generate_product_description,
+    suggest_complementary_products, parse_order_from_text
+)
+
+# Demo data
+from utils.demo_data import create_demo_store
 
 load_dotenv()
 
@@ -717,4 +786,583 @@ async def get_user_stats(request: Request, db: Session = Depends(get_db)):
         "conversations": conversation_count,
         "pdfs": pdf_count,
         "usage": stats
+    }
+
+# ═══════════════════════════════════════════════════════════════════
+# ADMIN ROUTES (Business Owner)
+# ═══════════════════════════════════════════════════════════════════
+
+@app.get("/api/store/dashboard")
+async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
+    """Get dashboard overview stats"""
+    user = get_current_user(request)
+    
+    # Get business for this user
+    business = get_business_by_user(db, user['id'])
+    
+    if not business:
+        return JSONResponse({
+            "status": "no_business",
+            "message": "No business setup yet"
+        })
+    
+    # Get today's stats
+    today_orders = get_today_orders(db, business.id)
+    stats = get_order_stats(db, business.id, days=7)
+    popular = get_popular_products(db, business.id, limit=5)
+    
+    # Count orders by status
+    pending = [o for o in today_orders if o.status == 'pending']
+    preparing = [o for o in today_orders if o.status == 'preparing']
+    ready = [o for o in today_orders if o.status == 'ready']
+    
+    return {
+        "business": {
+            "name": business.name,
+            "slug": business.slug,
+            "is_open": business.is_open,
+            "total_orders": business.total_orders,
+            "total_revenue": business.total_revenue
+        },
+        "today": {
+            "orders": len(today_orders),
+            "revenue": sum(o.total for o in today_orders if o.status == 'delivered'),
+            "pending": len(pending),
+            "preparing": len(preparing),
+            "ready": len(ready)
+        },
+        "week": stats,
+        "popular_products": [
+            {"name": p[1], "times_ordered": p[2], "revenue": p[3]}
+            for p in popular
+        ]
+    }
+
+
+@app.get("/api/store/products")
+async def admin_list_products(
+    request: Request,
+    category_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """List all products for business owner"""
+    user = get_current_user(request)
+    business = get_business_by_user(db, user['id'])
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    products = list_products(
+        db,
+        business.id,
+        category_id=category_id,
+        active_only=False  # Show all for admin
+    )
+    
+    return {
+        "products": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "description": p.description,
+                "price": p.price,
+                "unit": p.unit,
+                "category_id": p.category_id,
+                "in_stock": p.in_stock,
+                "stock_quantity": p.stock_quantity,
+                "is_active": p.is_active,
+                "is_featured": p.is_featured,
+                "times_ordered": p.times_ordered,
+                "image_url": p.image_url
+            }
+            for p in products
+        ]
+    }
+
+
+@app.post("/api/store/products")
+async def admin_create_product(
+    request: Request,
+    product: ProductCreate,
+    db: Session = Depends(get_db)
+):
+    """Create new product"""
+    user = get_current_user(request)
+    business = get_business_by_user(db, user['id'])
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    new_product = create_product(
+        db,
+        business_id=business.id,
+        name=product.name,
+        description=product.description,
+        price=product.price,
+        unit=product.unit,
+        category_id=product.category_id,
+        in_stock=product.in_stock,
+        is_featured=product.is_featured
+    )
+    
+    return {"status": "success", "product_id": new_product.id}
+
+
+@app.put("/api/store/products/{product_id}")
+async def admin_update_product(
+    request: Request,
+    product_id: int,
+    updates: dict,
+    db: Session = Depends(get_db)
+):
+    """Update product"""
+    user = get_current_user(request)
+    business = get_business_by_user(db, user['id'])
+    
+    product = get_product(db, product_id)
+    if not product or product.business_id != business.id:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    updated = update_product(db, product_id, **updates)
+    
+    return {"status": "success", "product": {"id": updated.id, "name": updated.name}}
+
+
+@app.post("/api/store/products/ai-describe")
+async def ai_generate_description(
+    request: Request,
+    product_name: str = Form(...),
+    category: str = Form(...),
+    price: float = Form(...),
+    unit: str = Form(None)
+):
+    """AI-generate product description"""
+    description = await generate_product_description(product_name, category, price, unit)
+    return {"description": description}
+
+
+@app.get("/api/store/categories")
+async def admin_list_categories(request: Request, db: Session = Depends(get_db)):
+    """List all categories"""
+    user = get_current_user(request)
+    business = get_business_by_user(db, user['id'])
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    categories = list_categories(db, business.id, active_only=False)
+    
+    return {
+        "categories": [
+            {
+                "id": c.id,
+                "name": c.name,
+                "icon": c.icon,
+                "display_order": c.display_order,
+                "is_active": c.is_active,
+                "product_count": len(c.products)
+            }
+            for c in categories
+        ]
+    }
+
+
+@app.get("/api/store/orders")
+async def admin_list_orders(
+    request: Request,
+    status: Optional[str] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """List orders for business owner"""
+    user = get_current_user(request)
+    business = get_business_by_user(db, user['id'])
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Business not found")
+    
+    orders = list_orders(db, business.id, status=status, limit=limit)
+    
+    return {
+        "orders": [
+            {
+                "id": o.id,
+                "order_number": o.order_number,
+                "status": o.status,
+                "customer_name": o.customer.name,
+                "customer_phone": o.customer.phone,
+                "total": o.total,
+                "item_count": o.item_count,
+                "created_at": o.created_at.isoformat(),
+                "estimated_delivery": o.estimated_delivery_time.isoformat() if o.estimated_delivery_time else None,
+                "items": [
+                    {
+                        "product_name": item.product_name,
+                        "quantity": item.quantity,
+                        "total_price": item.total_price
+                    }
+                    for item in o.items
+                ]
+            }
+            for o in orders
+        ]
+    }
+
+
+@app.get("/api/store/orders/{order_id}")
+async def admin_get_order(
+    request: Request,
+    order_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get single order details"""
+    user = get_current_user(request)
+    business = get_business_by_user(db, user['id'])
+    
+    order = get_order(db, order_id)
+    if not order or order.business_id != business.id:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    return {
+        "id": order.id,
+        "order_number": order.order_number,
+        "status": order.status,
+        "customer": {
+            "name": order.customer.name,
+            "phone": order.customer.phone,
+            "total_orders": order.customer.total_orders,
+            "total_spent": order.customer.total_spent
+        },
+        "items": [
+            {
+                "product_name": item.product_name,
+                "quantity": item.quantity,
+                "unit_price": item.unit_price,
+                "total_price": item.total_price,
+                "notes": item.notes
+            }
+            for item in order.items
+        ],
+        "pricing": {
+            "subtotal": order.subtotal,
+            "delivery_fee": order.delivery_fee,
+            "total": order.total
+        },
+        "delivery": {
+            "address": order.delivery_address,
+            "instructions": order.delivery_instructions,
+            "estimated_time": order.estimated_delivery_time.isoformat() if order.estimated_delivery_time else None
+        },
+        "timestamps": {
+            "created_at": order.created_at.isoformat(),
+            "confirmed_at": order.confirmed_at.isoformat() if order.confirmed_at else None,
+            "delivered_at": order.delivered_at.isoformat() if order.delivered_at else None
+        },
+        "notes": {
+            "customer": order.customer_notes,
+            "business": order.business_notes
+        }
+    }
+
+
+@app.put("/api/store/orders/{order_id}/status")
+async def admin_update_order_status(
+    request: Request,
+    order_id: int,
+    status: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    """Update order status"""
+    user = get_current_user(request)
+    business = get_business_by_user(db, user['id'])
+    
+    order = get_order(db, order_id)
+    if not order or order.business_id != business.id:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    updated = update_order_status(db, order_id, status)
+    
+    return {
+        "status": "success",
+        "order_id": updated.id,
+        "new_status": updated.status
+    }
+
+
+@app.post("/api/store/setup")
+async def setup_business(
+    request: Request,
+    name: str = Form(...),
+    slug: str = Form(...),
+    description: str = Form(None),
+    phone: str = Form(None),
+    db: Session = Depends(get_db)
+):
+    """Initial business setup"""
+    user = get_current_user(request)
+    
+    # Check if business already exists
+    existing = get_business_by_user(db, user['id'])
+    if existing:
+        return {"status": "error", "message": "Business already exists"}
+    
+    # Check slug availability
+    slug_taken = get_business_by_slug(db, slug)
+    if slug_taken:
+        return {"status": "error", "message": "Slug already taken"}
+    
+    business = create_business(
+        db,
+        user_id=user['id'],
+        name=name,
+        slug=slug,
+        description=description,
+        phone=phone
+    )
+    
+    return {
+        "status": "success",
+        "business_id": business.id,
+        "slug": business.slug
+    }
+
+
+@app.post("/api/store/demo-data")
+async def create_demo_data_endpoint(request: Request, db: Session = Depends(get_db)):
+    """Generate demo data (for testing)"""
+    user = get_current_user(request)
+    
+    business = create_demo_store(db, user['id'])
+    
+    return {
+        "status": "success",
+        "business_id": business.id,
+        "slug": business.slug,
+        "message": f"Demo store '{business.name}' created!"
+    }
+
+# ═══════════════════════════════════════════════════════════════════
+# STORE ROUTES - Add these to app.py
+# ═══════════════════════════════════════════════════════════════════
+
+@app.get("/store/{slug}/products")
+async def storefront_products(
+    slug: str,
+    category_id: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Get products for customer storefront"""
+    business = get_business_by_slug(db, slug)
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    products = list_products(
+        db,
+        business.id,
+        category_id=category_id,
+        active_only=True,
+        in_stock_only=True
+    )
+    
+    categories = list_categories(db, business.id, active_only=True)
+    
+    return {
+        "categories": [
+            {"id": c.id, "name": c.name, "icon": c.icon}
+            for c in categories
+        ],
+        "products": [
+            {
+                "id": p.id,
+                "name": p.name,
+                "description": p.description,
+                "price": p.price,
+                "unit": p.unit,
+                "image_url": p.image_url,
+                "in_stock": p.in_stock,
+                "is_featured": p.is_featured
+            }
+            for p in products
+        ]
+    }
+
+
+@app.post("/store/{slug}/chat")
+async def storefront_chat(
+    slug: str,
+    message: str = Form(...),
+    session_id: str = Form(...),
+    cart: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
+):
+    """AI chat ordering"""
+    business = get_business_by_slug(db, slug)
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    # Parse cart if provided
+    cart_data = json.loads(cart) if cart else {"items": []}
+    
+    # Build context
+    context = {
+        "cart": cart_data.get("items", []),
+        "session_id": session_id
+    }
+    
+    # Get AI response - pass db session correctly
+    response = await chat_with_customer(
+        message=message,
+        business_id=business.id,
+        db=db,  # Pass the actual db session
+        context=context
+    )
+    
+    return response
+
+
+@app.get("/api/store/dashboard")
+async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
+    """Admin dashboard stats"""
+    # Get current user (use your existing auth)
+    # user = get_current_user(request)
+    
+    # For testing, use user_id = 1
+    business = get_business_by_user(db, user_id=1)
+    
+    if not business:
+        return {"status": "no_business", "message": "No business found"}
+    
+    today_orders = get_today_orders(db, business.id)
+    stats = get_order_stats(db, business.id, days=7)
+    
+    return {
+        "business": {
+            "name": business.name,
+            "slug": business.slug,
+            "is_open": business.is_open
+        },
+        "today": {
+            "orders": len(today_orders),
+            "revenue": sum(o.total for o in today_orders if o.status == 'delivered')
+        },
+        "week": stats
+    }
+
+@app.get("/store/{slug}", response_class=HTMLResponse)
+async def storefront_home(slug: str, request: Request, db: Session = Depends(get_db)):
+    """Customer landing page"""
+    business = get_business_by_slug(db, slug)
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    return templates.TemplateResponse("storefront/store.html", {
+        "request": request,
+        "business": business
+    })
+
+
+@app.get("/store/{slug}/cart", response_class=HTMLResponse)
+async def storefront_cart(slug: str, request: Request):
+    """Cart and checkout page"""
+    return templates.TemplateResponse("storefront/cart.html", {
+        "request": request
+    })
+
+@app.post("/store/{slug}/orders")
+async def storefront_place_order(
+    slug: str,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Place a new order"""
+    business = get_business_by_slug(db, slug)
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    if not business.is_open:
+        return {"status": "error", "message": "Store is currently closed"}
+    
+    # Get JSON body
+    body = await request.json()
+    
+    # Get or create customer
+    customer = get_or_create_customer(
+        db,
+        business.id,
+        body['customer_phone'],
+        body.get('customer_name')
+    )
+    
+    # Create order
+    order = create_order(
+        db,
+        business_id=business.id,
+        customer_id=customer.id,
+        items=body['items'],
+        delivery_address=body['delivery_address'],
+        customer_notes=body.get('customer_notes'),
+        delivery_instructions=body.get('delivery_instructions')
+    )
+    
+    return {
+        "status": "success",
+        "order_number": order.order_number,
+        "order_id": order.id,
+        "total": order.total,
+        "estimated_delivery": order.estimated_delivery_time.isoformat() if order.estimated_delivery_time else None
+    }
+
+
+@app.get("/store/{slug}/orders/{order_number}")
+async def storefront_track_order(
+    slug: str,
+    order_number: str,
+    db: Session = Depends(get_db)
+):
+    """Track order status (API endpoint for AJAX)"""
+    business = get_business_by_slug(db, slug)
+    
+    if not business:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    order = get_order_by_number(db, order_number)
+    
+    if not order or order.business_id != business.id:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    return {
+        "order_number": order.order_number,
+        "status": order.status,
+        "items": [
+            {
+                "name": item.product_name,
+                "quantity": item.quantity,
+                "total": item.total_price
+            }
+            for item in order.items
+        ],
+        "customer": {
+            "phone": order.customer.phone
+        },
+        "total": order.total,
+        "delivery": {
+            "address": order.delivery_address,
+            "estimated_time": order.estimated_delivery_time.isoformat() if order.estimated_delivery_time else None
+        },
+        "pricing": {
+            "subtotal": order.subtotal,
+            "delivery_fee": order.delivery_fee,
+            "total": order.total
+        },
+        "timestamps": {
+            "created_at": order.created_at.isoformat(),
+            "confirmed_at": order.confirmed_at.isoformat() if order.confirmed_at else None,
+            "preparing_at": order.preparing_started_at.isoformat() if order.preparing_started_at else None,
+            "ready_at": order.ready_at.isoformat() if order.ready_at else None,
+            "delivered_at": order.delivered_at.isoformat() if order.delivered_at else None
+        }
     }

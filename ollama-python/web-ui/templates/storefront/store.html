@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport content=" width=device-width, initial-scale=1.0">
+    <title>{{ business.name }} - Order Now</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00C853;
+            --primary-dark: #00A043;
+            --accent: #FF6F00;
+            --bg: #FFFFFF;
+            --surface: #F5F5F5;
+            --text: #37474F;
+            --text-light: #616161;
+            --border: #E0E0E0;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--surface);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            box-shadow: 0 2px 8px var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .store-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .cart-button {
+            position: relative;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .cart-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--accent);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        /* Hero Section with AI Chat */
+        .hero {
+            background: linear-gradient(135deg, var(--primary) 0%, #00A043 100%);
+            color: white;
+            padding: 3rem 1.5rem;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 24px rgba(0, 200, 83, 0.3);
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            margin-bottom: 1.5rem;
+        }
+
+        /* AI Chat Widget */
+        .chat-widget {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .chat-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .chat-messages {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 75%;
+            padding: 0.75rem 1rem;
+            border-radius: 16px;
+            font-size: 0.95rem;
+        }
+
+        .message.assistant .message-bubble {
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .message.user .message-bubble {
+            background: var(--primary);
+            color: white;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 25px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .chat-send {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .chat-send:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Categories */
+        .categories {
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+            scrollbar-width: thin;
+        }
+
+        .category-chip {
+            background: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .category-chip:hover,
+        .category-chip.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        /* Products Grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px var(--shadow);
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px var(--shadow);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 200px;
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            position: relative;
+        }
+
+        .product-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: var(--accent);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .product-info {
+            padding: 1.25rem;
+        }
+
+        .product-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .product-description {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .product-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .product-price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .product-unit {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-left: 0.25rem;
+        }
+
+        .add-button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.25rem;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .add-button:hover {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-light);
+        }
+
+        .spinner {
+            border: 3px solid var(--border);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 1.75rem;
+            }
+
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                gap: 1rem;
+            }
+
+            .product-image {
+                height: 140px;
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="store-name" id="storeName">Loading...</div>
+            <button class="cart-button" onclick="viewCart()">
+                🛒 Cart
+                <span class="cart-count" id="cartCount">0</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Hero with AI Chat -->
+        <section class="hero">
+            <h1 id="businessName">Welcome!</h1>
+            <p id="businessDescription">Loading your store...</p>
+
+            <!-- AI Chat Widget -->
+            <div class="chat-widget">
+                <div class="chat-header">
+                    <div class="chat-avatar">🤖</div>
+                    <div>
+                        <strong>AI Assistant</strong>
+                        <div style="font-size: 0.85rem; opacity: 0.7;">Ask me anything!</div>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message assistant">
+                        <div class="message-bubble">
+                            Hello! How can I help you today?
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="breakfast, flour, snacks..."
+                        onkeypress="handleChatKeyPress(event)">
+                    <button class="chat-send" onclick="sendChatMessage()">Send</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Categories -->
+        <div class="categories" id="categories">
+            <div class="category-chip active" data-category="">All</div>
+        </div>
+
+        <!-- Products Grid -->
+        <div class="products-grid" id="productsGrid">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading delicious products...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get slug from URL
+        const slug = window.location.pathname.split('/')[2];
+        const sessionId = generateSessionId();
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        let businessData = null;
+        let allProducts = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStoreData();
+            updateCartCount();
+        });
+
+        function generateSessionId() {
+            return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        async function loadStoreData() {
+            try {
+                const response = await fetch(`/store/${slug}/products`);
+                const data = await response.json();
+
+                businessData = data;
+                allProducts = data.products;
+
+                // Update business info
+                document.getElementById('storeName').textContent = data.business?.name || 'Store';
+                document.getElementById('businessName').textContent = data.business?.name || 'Welcome!';
+                document.getElementById('businessDescription').textContent = data.business?.description || '';
+
+                // Render categories
+                renderCategories(data.categories);
+
+                // Render products
+                renderProducts(data.products);
+            } catch (error) {
+                console.error('Error loading store:', error);
+                document.getElementById('productsGrid').innerHTML = '<div class="loading"><p>Error loading products. Please try again.</p></div>';
+            }
+        }
+
+        function renderCategories(categories) {
+            const container = document.getElementById('categories');
+
+            categories.forEach(cat => {
+                const chip = document.createElement('div');
+                chip.className = 'category-chip';
+                chip.dataset.category = cat.id;
+                chip.textContent = `${cat.icon} ${cat.name}`;
+                chip.onclick = () => filterByCategory(cat.id);
+                container.appendChild(chip);
+            });
+        }
+
+        function filterByCategory(categoryId) {
+            // Update active state
+            document.querySelectorAll('.category-chip').forEach(chip => {
+                chip.classList.toggle('active', chip.dataset.category == categoryId || (!categoryId && chip.dataset.category === ''));
+            });
+
+            // Filter products
+            const filtered = categoryId ? allProducts.filter(p => p.category_id == categoryId) : allProducts;
+            renderProducts(filtered);
+        }
+
+        function renderProducts(products) {
+            const grid = document.getElementById('productsGrid');
+
+            if (products.length === 0) {
+                grid.innerHTML = '<div class="loading"><p>No products available in this category.</p></div>';
+                return;
+            }
+
+            grid.innerHTML = products.map(product => `
+                <div class="product-card" onclick="viewProduct(${product.id})">
+                    <div class="product-image">
+                        ${getProductEmoji(product.name)}
+                        ${product.is_featured ? '<div class="product-badge">⭐ Popular</div>' : ''}
+                    </div>
+                    <div class="product-info">
+                        <div class="product-name">${product.name}</div>
+                        <div class="product-description">${product.description || ''}</div>
+                        <div class="product-footer">
+                            <div>
+                                <span class="product-price">₹${product.price}</span>
+                                <span class="product-unit">${product.unit || ''}</span>
+                            </div>
+                            <button class="add-button" onclick="addToCart(event, ${product.id})">Add +</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getProductEmoji(name) {
+            const lower = name.toLowerCase();
+            if (lower.includes('idli') || lower.includes('dosa') || lower.includes('batter')) return '🥞';
+            if (lower.includes('flour') || lower.includes('atta')) return '🌾';
+            if (lower.includes('flakes') || lower.includes('aval') || lower.includes('poha')) return '🫘';
+            if (lower.includes('murukku') || lower.includes('snack')) return '🍿';
+            return '🍽️';
+        }
+
+        function addToCart(event, productId) {
+            event.stopPropagation();
+
+            const product = allProducts.find(p => p.id === productId);
+            if (!product) return;
+
+            const existingItem = cart.find(item => item.id === productId);
+
+            if (existingItem) {
+                existingItem.quantity++;
+            } else {
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    unit: product.unit,
+                    quantity: 1
+                });
+            }
+
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartCount();
+
+            // Visual feedback
+            const button = event.target;
+            button.textContent = '✓ Added';
+            setTimeout(() => {
+                button.textContent = 'Add +';
+            }, 1500);
+        }
+
+        function updateCartCount() {
+            const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('cartCount').textContent = count;
+        }
+
+        function viewProduct(productId) {
+            // TODO: Open product detail modal
+            console.log('View product:', productId);
+        }
+
+        function viewCart() {
+            window.location.href = `/store/${slug}/cart`;
+        }
+
+        // Chat functionality
+        async function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // Add user message to chat
+            addMessageToChat('user', message);
+            input.value = '';
+
+            try {
+                const response = await fetch(`/store/${slug}/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        message: message,
+                        session_id: sessionId,
+                        cart: JSON.stringify({ items: cart })
+                    })
+                });
+
+                const data = await response.json();
+
+                // Add AI response
+                addMessageToChat('assistant', data.response);
+
+                // Show suggested products if any
+                if (data.suggested_products && data.suggested_products.length > 0) {
+                    showProductsInChat(data.suggested_products, data.action === 'add_to_cart');
+                }
+            } catch (error) {
+                console.error('Chat error:', error);
+                addMessageToChat('assistant', 'Sorry, I had trouble with that. Please try again.');
+            }
+        }
+
+        function showProductsInChat(suggestedProducts, autoAdd = false) {
+            const messagesContainer = document.getElementById('chatMessages');
+
+            suggestedProducts.forEach(suggestion => {
+                const product = allProducts.find(p => p.name.toLowerCase() === suggestion.name.toLowerCase());
+                if (!product) return;
+
+                const productCard = document.createElement('div');
+                productCard.className = 'message assistant';
+                productCard.innerHTML = `
+                    <div style="background: white; border-radius: 12px; padding: 1rem; max-width: 300px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                            <strong style="color: var(--text);">${product.name}</strong>
+                            <span style="font-size: 1.2rem;">${getProductEmoji(product.name)}</span>
+                        </div>
+                        <div style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 0.75rem;">
+                            ${product.unit || ''}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--primary); font-weight: 700; font-size: 1.2rem;">₹${product.price}</span>
+                            <button onclick="addToCartFromChat(${product.id}, ${suggestion.quantity})" 
+                                    style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 20px; cursor: pointer; font-weight: 600;">
+                                Add ${suggestion.quantity > 1 ? suggestion.quantity + 'x' : ''}
+                            </button>
+                        </div>
+                    </div>
+                `;
+                messagesContainer.appendChild(productCard);
+
+                // Auto-add to cart if AI said so
+                if (autoAdd) {
+                    addToCartFromChat(product.id, suggestion.quantity);
+                }
+            });
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function addToCartFromChat(productId, quantity = 1) {
+            const product = allProducts.find(p => p.id === productId);
+            if (!product) return;
+
+            const existingItem = cart.find(item => item.id === productId);
+
+            if (existingItem) {
+                existingItem.quantity += quantity;
+            } else {
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    unit: product.unit,
+                    quantity: quantity
+                });
+            }
+
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartCount();
+
+            // Show feedback
+            addMessageToChat('assistant', `✓ Added ${quantity > 1 ? quantity + ' ' : ''}${product.name} to cart`);
+        }
+
+        function addMessageToChat(role, text) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.innerHTML = `<div class="message-bubble">${text}</div>`;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function handleChatKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendChatMessage();
+            }
+        }
+    </script>
+</body>
+
+</html>
