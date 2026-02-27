@@ -12,8 +12,8 @@ export const Layout: React.FC = () => {
     }
 
     return (
-        <div className="app-wrapper">
-            <div className="app-container main-app-frame">
+        <div className="lg:app-wrapper app-screen-wrapper">
+            <div className="app-container lg:rounded-[2rem] rounded-none lg:border border-0">
                 {/* Desktop Sidebar */}
                 <div className="hidden lg:block w-[280px] shrink-0 border-r border-[#1a1d27] bg-[#0f121b]">
                     <Sidebar />
@@ -22,11 +22,7 @@ export const Layout: React.FC = () => {
                 <main className="main-content relative overflow-y-auto">
                     {/* Simplified Mobile Header */}
                     <header
-                        className="flex items-center justify-center sticky top-0 bg-[#0f121b]/80 backdrop-blur-md z-30 lg:hidden border-b border-white/5 shrink-0"
-                        style={{
-                            paddingTop: 'var(--sat)',
-                            height: 'calc(70px + var(--sat))'
-                        }}
+                        className="h-[70px] flex items-center justify-center sticky top-0 bg-transparent z-30 lg:hidden shrink-0"
                     >
                         <h1 className="text-xl font-semibold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-[#00e5ff] to-[#b429f9]">
                             Performance.os

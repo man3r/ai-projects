@@ -276,8 +276,7 @@ p {
   -webkit-overflow-scrolling: touch;
   /* Enable smooth scrolling on iOS */
   width: 100%;
-  padding-bottom: calc(var(--mobile-nav-height) + var(--sab) + 20px);
-  /* Space for absolutely positioned nav + safe area + floating margin */
+  /* Removed padding-bottom calculation since the wrapper will handle it globally */
 }
 
 @media (min-width: 1024px) {
@@ -364,22 +363,25 @@ p {
 
 /* User Proposed Mobile Styles */
 @media (max-width: 1023px) {
-  .main-app-frame {
-    /* This ensures the background of the app stays dark */
-    background-color: var(--bg-surface);
+  .app-screen-wrapper {
     display: flex;
     flex-direction: column;
+    height: 100dvh;
+    /* Dynamic height to fill the screen */
+    width: 100vw;
+    background-color: var(--bg-surface);
+    /* Dark app background behind content */
 
-    /* The Secret Sauce: Matching the iPhone's physical corner radius */
-    /* iPhone 17 corners are roughly 48px to 52px */
-    border-bottom-left-radius: 50px;
-    border-bottom-right-radius: 50px;
+    /* Apply the rounding to the entire app viewport on all 4 corners */
+    border-radius: 48px;
 
-    /* This prevents child elements from 'poking out' */
-    overflow: hidden;
-
-    /* Ensure it doesn't overlap the bottom gesture area (also pushing nav up) */
+    /* Ensure the content starts below the Dynamic Island */
+    padding-top: var(--sat);
+    /* Ensure content ends before the physical bottom curve */
     padding-bottom: var(--sab);
+
+    overflow: hidden;
+    box-sizing: border-box;
   }
 
   .bottom-nav {
