@@ -1,0 +1,96 @@
+---
+# ─── Secret: Postgres credentials ──────────────────────────────────────────────
+# IMPORTANT: Before applying to a production cluster, replace the base64 values
+# with your own. Generate them with: echo -n "your-value" | base64
+# Default values: user=pms_user  password=pms_password  db=performance_os
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: performance-os
+type: Opaque
+data:
+  POSTGRES_USER: cG1zX3VzZXI=        # pms_user
+  POSTGRES_PASSWORD: cG1zX3Bhc3N3b3Jk # pms_password
+  POSTGRES_DB: cGVyZm9ybWFuY2Vfb3M=   # performance_os
+
+---
+# ─── PersistentVolumeClaim: Database storage ───────────────────────────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: performance-os
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# ─── StatefulSet: PostgreSQL ───────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: performance-os
+spec:
+  selector:
+    matchLabels:
+      app: postgres
+  serviceName: postgres-svc
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_DB
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "pms_user", "-d", "performance_os"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+
+---
+# ─── Service: PostgreSQL internal access ──────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-svc
+  namespace: performance-os
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  clusterIP: None  # Headless service — ideal for StatefulSets
