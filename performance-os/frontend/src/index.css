@@ -385,7 +385,7 @@ p {
   .bottom-nav {
     /* Make the nav bar itself rounded to sit inside the frame */
     border-radius: 40px;
-    margin: 10px 15px;
+    margin: 10px;
     /* Gives it a floating 'island' look */
     padding-bottom: 0 !important;
     /* Override inline safe area padding since we floated it */

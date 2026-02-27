@@ -30,7 +30,7 @@ export const MobileNav: React.FC = () => {
 
     return (
         <nav
-            className="lg:hidden fixed bottom-0 left-0 w-full flex items-center justify-around z-50 px-2 bottom-nav"
+            className="lg:hidden fixed bottom-0 inset-x-0 mx-auto max-w-md flex items-center justify-around z-50 px-2 bottom-nav"
             style={{
                 paddingBottom: 'var(--sab)',
                 height: 'calc(70px + var(--sab))'
