@@ -276,8 +276,8 @@ p {
   -webkit-overflow-scrolling: touch;
   /* Enable smooth scrolling on iOS */
   width: 100%;
-  padding-bottom: var(--mobile-nav-height);
-  /* Space for absolutely positioned nav */
+  padding-bottom: calc(var(--mobile-nav-height) + var(--sab));
+  /* Space for absolutely positioned nav + safe area */
 }
 
 @media (min-width: 1024px) {
