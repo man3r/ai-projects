@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: performance-os-frontend:v1.0
-          imagePullPolicy: IfNotPresent  # Change to Always when using a registry
+          image: ghcr.io/man3r/performance-os-frontend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           readinessProbe:

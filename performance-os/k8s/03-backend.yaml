@@ -32,8 +32,8 @@ spec:
     spec:
       containers:
         - name: backend
-          image: performance-os-backend:v1.0
-          imagePullPolicy: IfNotPresent  # Change to Always when using a registry
+          image: ghcr.io/man3r/performance-os-backend:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           envFrom:
