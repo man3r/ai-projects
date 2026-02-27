@@ -89,6 +89,7 @@ jobs:
           context: ./performance-os
           file: ./performance-os/Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.BACKEND_IMAGE }}:latest
             ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
@@ -102,6 +103,7 @@ jobs:
           context: ./performance-os/frontend
           file: ./performance-os/frontend/Dockerfile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             ${{ env.FRONTEND_IMAGE }}:latest
             ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
