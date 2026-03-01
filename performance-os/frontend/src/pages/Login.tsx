@@ -44,7 +44,7 @@ export const Login: React.FC = () => {
             <div className="app-container flex-col items-center justify-center p-6 bg-[#0f121b]">
                 <div className="w-full max-w-sm animate-fade-up flex flex-col items-center">
 
-                    <h1 className="text-xl font-medium text-slate-300 mb-8 mt-4 text-center">Welcome, Achiever!</h1>
+                    <h1 className="text-xl font-medium text-slate-300 mb-8 mt-4 text-center">Welcome to Performance Management System</h1>
 
                     {/* Glowing Logo representation */}
                     <div className="relative mb-12 flex items-center justify-center w-32 h-32 rounded-full border-2 border-transparent bg-gradient-to-tr from-[#00e5ff] to-[#b429f9] p-[2px]">
