@@ -106,22 +106,32 @@ jobs:
           cache-from: type=gha,scope=frontend-arm64
           cache-to: type=gha,scope=frontend-arm64,mode=max
 
-  # ─── Job 3: Output deploy instructions ───────────────────────────────────────
-  deploy-instructions:
-    name: Deploy Instructions
+  # ─── Job 3: Update GitOps Manifests ──────────────────────────────────────────
+  update-gitops:
+    name: Update K8s Manifests
     runs-on: ubuntu-latest
     needs: build-and-push
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write  # Needed to push commits back to the repo
 
     steps:
-      - name: Print rollout commands
+      - uses: actions/checkout@v4
+        with:
+          # Ensure we fetch the branch we're actually running on
+          ref: ${{ github.ref_name }}
+
+      - name: Update K8s image tags
         run: |
-          echo "## 🚀 New ARM64 images published to GHCR" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Run these commands on your local machine to deploy:" >> $GITHUB_STEP_SUMMARY
-          echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "kubectl set image deployment/backend backend=${{ env.BACKEND_IMAGE }}:${{ github.sha }} -n performance-os" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl set image deployment/frontend frontend=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} -n performance-os" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl rollout status deployment/backend -n performance-os" >> $GITHUB_STEP_SUMMARY
-          echo "kubectl rollout status deployment/frontend -n performance-os" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          # Replace the image lines with the exact new SHA
+          sed -i "s|image: ghcr.io/.*/performance-os-backend.*|image: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}|g" performance-os/k8s/03-backend.yaml
+          sed -i "s|image: ghcr.io/.*/performance-os-frontend.*|image: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}|g" performance-os/k8s/04-frontend.yaml
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add performance-os/k8s/03-backend.yaml performance-os/k8s/04-frontend.yaml
+          # Use [skip ci] so this commit doesn't trigger another infinity loop of pipeline runs
+          git commit -m "chore(gitops): update image tags to ${{ github.sha }} [skip ci]" || echo "No changes to commit"
+          git push origin ${{ github.ref_name }}
