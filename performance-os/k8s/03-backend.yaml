@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: ghcr.io/man3r/performance-os-backend:latest
+          image: ghcr.io/man3r/performance-os-backend:ab566f4e28bf4cf891bc6e7446a086892178ef80
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
