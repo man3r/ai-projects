@@ -34,7 +34,7 @@ export const Dashboard: React.FC = () => {
 
             <header className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white">Goal Dashboard</h1>
+                    <h1 className="text-2xl font-bold tracking-tight text-white">Goal Dashboard 2.0</h1>
                     <p className="text-slate-400 mt-1">Overview of your current progress and pulse</p>
                 </div>
             </header>
