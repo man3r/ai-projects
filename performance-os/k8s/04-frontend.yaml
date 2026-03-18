@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/man3r/performance-os-frontend:1dc3ffca053a2b64275b0134e9a5255371aae2d9
+          image: ghcr.io/man3r/performance-os-frontend:d0b27725bd1a13b4ad36100b24f8e0274383d520
           imagePullPolicy: Always
           ports:
             - containerPort: 80
