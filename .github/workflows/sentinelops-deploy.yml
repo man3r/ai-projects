@@ -1,0 +1,113 @@
+name: SentinelOps Auto-Deploy
+
+# Triggers only when a SentinelOps-created PR (fix/sentinel-* or revert/sentinel-*)
+# is merged to main. Regular commits to main do NOT trigger this workflow.
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  deploy:
+    if: |
+      github.event.pull_request.merged == true &&
+      (startsWith(github.event.pull_request.head.ref, 'fix/sentinel-') ||
+       startsWith(github.event.pull_request.head.ref, 'revert/sentinel-'))
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      # ── 1. Extract incident short ID from branch name ─────────────────────
+      - name: Extract metadata
+        id: meta
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          INCIDENT_SHORT=$(echo "$BRANCH" | grep -oP '(?<=sentinel-)[a-f0-9-]+')
+          echo "incident_short=$INCIDENT_SHORT" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "Incident short ID: $INCIDENT_SHORT"
+
+      # ── 2. Checkout full repo ──────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 3. Run tests ───────────────────────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        working-directory: performance-os
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        working-directory: performance-os
+        run: |
+          if [ -d "tests" ]; then
+            python -m pytest tests/ -q --tb=short
+          else
+            echo "No tests directory — skipping."
+          fi
+
+      # ── 4. Build and push Docker image to GHCR ────────────────────────────
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./performance-os
+          file: ./performance-os/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/man3r/performance-os-backend:${{ github.sha }}
+            ghcr.io/man3r/performance-os-backend:latest
+
+      # ── 5. Update k8s manifest image tag ──────────────────────────────────
+      # ArgoCD watches performance-os/k8s/ on main and auto-syncs on any change.
+      - name: Update backend image tag in k8s manifest
+        run: |
+          sed -i "s|ghcr.io/man3r/performance-os-backend:.*|ghcr.io/man3r/performance-os-backend:${{ github.sha }}|g" \
+            performance-os/k8s/03-backend.yaml
+          git config user.email "sentinelops-bot@sentinel.ops"
+          git config user.name "SentinelOps Bot"
+          git add performance-os/k8s/03-backend.yaml
+          git commit -m "chore(gitops): update performance-os image to ${{ github.sha }} [skip ci]"
+          git push origin main
+
+      # ── 6. Notify SentinelOps ─────────────────────────────────────────────
+      - name: Notify SentinelOps — deploy success
+        if: success()
+        run: |
+          curl -s -X POST "${{ secrets.SENTINELOPS_WEBHOOK_URL }}/internal/deploy-webhook" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"incident_id\": \"${{ steps.meta.outputs.incident_short }}\",
+              \"service\": \"performance-os\",
+              \"sha\": \"${{ github.sha }}\",
+              \"status\": \"success\"
+            }"
+
+      - name: Notify SentinelOps — deploy failure
+        if: failure()
+        run: |
+          curl -s -X POST "${{ secrets.SENTINELOPS_WEBHOOK_URL }}/internal/deploy-webhook" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"incident_id\": \"${{ steps.meta.outputs.incident_short }}\",
+              \"service\": \"performance-os\",
+              \"sha\": \"${{ github.sha }}\",
+              \"status\": \"failure\"
+            }"
