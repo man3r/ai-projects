@@ -1,0 +1,34 @@
+---
+# ─── Ingress: Route external traffic into the cluster ─────────────────────────
+# Requires the Nginx Ingress Controller to be installed on your cluster.
+# For Minikube: `minikube addons enable ingress`
+# For K3s: Traefik is built-in, change annotations to ingressClassName: traefik
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: performance-os-ingress
+  namespace: performance-os
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          # All /api/* traffic → FastAPI backend
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend-svc
+                port:
+                  number: 8000
+          # Everything else → React frontend (Nginx serves /index.html for SPA)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-svc
+                port:
+                  number: 80

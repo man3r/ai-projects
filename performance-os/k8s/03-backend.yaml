@@ -1,0 +1,74 @@
+---
+# ─── ConfigMap: Backend environment variables ──────────────────────────────────
+# DATABASE_URL points to the internal postgres-svc headless service
+# Format: postgresql://user:password@host/database
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: performance-os
+data:
+  DATABASE_URL: "postgresql://pms_user:pms_password@postgres-svc/performance_os"
+  SECRET_KEY: "change-me-in-production-use-a-long-random-string"
+
+---
+# ─── Deployment: FastAPI backend ───────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: performance-os
+  labels:
+    app: backend
+spec:
+  replicas: 2     # Run 2 replicas for HA — can be scaled up freely
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/man3r/performance-os-backend:1dc3ffca053a2b64275b0134e9a5255371aae2d9
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: backend-config
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+---
+# ─── Service: Backend internal access ─────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-svc
+  namespace: performance-os
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 8000
+      targetPort: 8000
